@@ -242,6 +242,53 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 <script>
 firebase.initializeApp({apiKey:"AIzaSyDO-PFe0OQDuEhsI_tAsSXxfvIlA2h72qw",authDomain:"marathon-tracker-525e8.firebaseapp.com",projectId:"marathon-tracker-525e8",storageBucket:"marathon-tracker-525e8.firebasestorage.app",messagingSenderId:"547077962613",appId:"1:547077962613:web:9a41b66c0aeb4374eff13c"});
 const db=firebase.firestore();
+// Built-in common foods (per 100g)
+const COMMON_FOODS=[
+  {name:'Chicken Breast, cooked',kcal:165,carbs:0,protein:31,fat:3.6,fiber:0,sugar:0,sodium:74},
+  {name:'Chicken Thigh, cooked',kcal:209,carbs:0,protein:26,fat:11,fiber:0,sugar:0,sodium:87},
+  {name:'Tempeh',kcal:193,carbs:9,protein:19,fat:11,fiber:0,sugar:0,sodium:9},
+  {name:'Tofu, firm',kcal:76,carbs:2,protein:8,fat:4,fiber:0,sugar:0,sodium:7},
+  {name:'Salmon, cooked',kcal:208,carbs:0,protein:28,fat:10,fiber:0,sugar:0,sodium:59},
+  {name:'Tuna, canned in water',kcal:116,carbs:0,protein:26,fat:1,fiber:0,sugar:0,sodium:320},
+  {name:'Ground Beef 80/20, cooked',kcal:254,carbs:0,protein:26,fat:17,fiber:0,sugar:0,sodium:75},
+  {name:'Eggs, whole large',kcal:143,carbs:1,protein:13,fat:10,fiber:0,sugar:1,sodium:142},
+  {name:'Egg Whites',kcal:52,carbs:1,protein:11,fat:0,fiber:0,sugar:1,sodium:166},
+  {name:'Greek Yogurt, plain nonfat',kcal:59,carbs:4,protein:10,fat:0,fiber:0,sugar:4,sodium:36},
+  {name:'Cottage Cheese, 2%',kcal:90,carbs:5,protein:12,fat:2,fiber:0,sugar:4,sodium:320},
+  {name:'White Rice, cooked',kcal:130,carbs:28,protein:3,fat:0,fiber:0,sugar:0,sodium:1},
+  {name:'Brown Rice, cooked',kcal:123,carbs:26,protein:3,fat:1,fiber:2,sugar:0,sodium:5},
+  {name:'Oats, dry rolled',kcal:389,carbs:66,protein:17,fat:7,fiber:11,sugar:1,sodium:2},
+  {name:'Sweet Potato, cooked',kcal:90,carbs:21,protein:2,fat:0,fiber:3,sugar:4,sodium:36},
+  {name:'White Potato, cooked',kcal:87,carbs:20,protein:2,fat:0,fiber:2,sugar:1,sodium:4},
+  {name:'Pasta, cooked',kcal:158,carbs:31,protein:6,fat:1,fiber:2,sugar:1,sodium:1},
+  {name:'Bread, whole wheat',kcal:247,carbs:41,protein:13,fat:4,fiber:7,sugar:5,sodium:395},
+  {name:'Banana',kcal:89,carbs:23,protein:1,fat:0,fiber:3,sugar:12,sodium:1},
+  {name:'Apple',kcal:52,carbs:14,protein:0,fat:0,fiber:2,sugar:10,sodium:1},
+  {name:'Blueberries',kcal:57,carbs:14,protein:1,fat:0,fiber:2,sugar:10,sodium:1},
+  {name:'Avocado',kcal:160,carbs:9,protein:2,fat:15,fiber:7,sugar:1,sodium:7},
+  {name:'Broccoli, cooked',kcal:35,carbs:7,protein:2,fat:0,fiber:3,sugar:2,sodium:41},
+  {name:'Spinach, raw',kcal:23,carbs:4,protein:3,fat:0,fiber:2,sugar:0,sodium:79},
+  {name:'Almonds',kcal:579,carbs:22,protein:21,fat:50,fiber:13,sugar:4,sodium:1},
+  {name:'Peanut Butter',kcal:588,carbs:20,protein:25,fat:50,fiber:6,sugar:9,sodium:459},
+  {name:'Olive Oil',kcal:884,carbs:0,protein:0,fat:100,fiber:0,sugar:0,sodium:2},
+  {name:'Milk, 2%',kcal:50,carbs:5,protein:3,fat:2,fiber:0,sugar:5,sodium:41},
+  {name:'Cheddar Cheese',kcal:402,carbs:1,protein:25,fat:33,fiber:0,sugar:1,sodium:621},
+  {name:'Black Beans, cooked',kcal:132,carbs:24,protein:9,fat:1,fiber:8,sugar:0,sodium:1},
+  {name:'Lentils, cooked',kcal:116,carbs:20,protein:9,fat:0,fiber:8,sugar:2,sodium:2},
+  {name:'Edamame, shelled',kcal:121,carbs:9,protein:11,fat:5,fiber:5,sugar:2,sodium:6},
+  {name:'Protein Powder, whey',kcal:400,carbs:10,protein:75,fat:7,fiber:2,sugar:5,sodium:200},
+  {name:'Turkey Breast, cooked',kcal:135,carbs:0,protein:30,fat:1,fiber:0,sugar:0,sodium:54},
+  {name:'Shrimp, cooked',kcal:99,carbs:0,protein:24,fat:1,fiber:0,sugar:0,sodium:111},
+  {name:'Pork Tenderloin, cooked',kcal:143,carbs:0,protein:26,fat:4,fiber:0,sugar:0,sodium:63},
+  {name:'Quinoa, cooked',kcal:120,carbs:22,protein:4,fat:2,fiber:3,sugar:1,sodium:7},
+  {name:'Strawberries',kcal:32,carbs:8,protein:1,fat:0,fiber:2,sugar:5,sodium:1},
+  {name:'Orange',kcal:47,carbs:12,protein:1,fat:0,fiber:2,sugar:9,sodium:0},
+  {name:'Mixed Greens, raw',kcal:20,carbs:3,protein:2,fat:0,fiber:1,sugar:1,sodium:28},
+];
+function searchLocal(q){const terms=q.toLowerCase().split(/\s+/);return COMMON_FOODS.filter(f=>terms.every(t=>f.name.toLowerCase().includes(t))).slice(0,8)}
+function renderCommonFoodCards(list){return list.map((f,i)=>{const idx=COMMON_FOODS.indexOf(f);return`<div class="food-card" onclick="openLocalFood(${idx})"><div style="min-width:0;flex:1"><div class="food-card-name">${f.name}</div><div class="food-card-brand" style="color:var(--text3);font-size:10px">Built-in · per 100g</div></div><div class="food-card-kcal">${f.kcal}<br><span class="food-card-unit">kcal</span></div></div>`}).join('')}
+function openLocalFood(idx){const f=COMMON_FOODS[idx];if(!f)return;pendingFood={name:f.name,brand:'',kcalPer100:f.kcal,carbsPer100:f.carbs,proteinPer100:f.protein,fatPer100:f.fat,fiber:f.fiber,sugar:f.sugar,sodium:f.sodium};showAddSheetFromPending()}
+
 let profile=null,userId=null,currentTab='log',selectedDate=todayStr(),foodLog=[],pendingFood=null,searchResults=[],searchTimer=null,targetsCache=null,pendingMeal='Breakfast';
 const MEAL_TYPES=['Breakfast','Lunch','Dinner','Snacks'];
 const MEAL_ICONS={Breakfast:'🌅',Lunch:'☀️',Dinner:'🌙',Snacks:'🍎'};
