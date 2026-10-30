@@ -441,28 +441,47 @@ function deleteLogEntry(idx){foodLog.splice(idx,1);saveFoodLog();renderLogTab();
 
 function renderSearchTab(){
   const c=document.getElementById('tab-content');
-  c.innerHTML=`<div class="section-title">Search Foods</div><div class="search-box"><input id="food-search-input" placeholder="e.g. chicken breast, banana…" oninput="onSearchInput()" autocomplete="off"><span class="s-icon">🔍</span></div><div class="meal-switch">${MEAL_TYPES.map(m=>`<button class="meal-tab ${m===pendingMeal?'active':''}" onclick="setPendingMeal('${m}',this)">${MEAL_ICONS[m]} ${m}</button>`).join('')}</div><div id="search-results-wrap"></div>`;
-  document.getElementById('food-search-input')?.focus();
+  c.innerHTML=`<div class="section-title">Search Foods</div><div class="search-box"><input id="food-search-input" placeholder="e.g. chicken, tempeh, banana…" oninput="onSearchInput()" autocomplete="off" autocorrect="off" spellcheck="false"><span class="s-icon">🔍</span></div><div class="meal-switch">${MEAL_TYPES.map(m=>`<button class="meal-tab ${m===pendingMeal?'active':''}" onclick="setPendingMeal('${m}',this)">${MEAL_ICONS[m]} ${m}</button>`).join('')}</div><div id="search-results-wrap"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:8px">Common Foods</div>${renderCommonFoodCards(COMMON_FOODS.slice(0,12))}</div>`;
+  setTimeout(()=>document.getElementById('food-search-input')?.focus(),150);
 }
 function setPendingMeal(meal,el){pendingMeal=meal;document.querySelectorAll('.meal-tab').forEach(b=>b.classList.remove('active'));el.classList.add('active')}
-function onSearchInput(){clearTimeout(searchTimer);const q=document.getElementById('food-search-input')?.value?.trim();if(!q||q.length<2){document.getElementById('search-results-wrap').innerHTML='';return}searchTimer=setTimeout(()=>searchFoods(q),400)}
-async function searchFoods(q){
+function onSearchInput(){
+  clearTimeout(searchTimer);
+  const q=document.getElementById('food-search-input')?.value?.trim();
   const wrap=document.getElementById('search-results-wrap');
-  wrap.innerHTML=`<div class="text-muted" style="padding:16px 0;text-align:center;">Searching…</div>`;
+  if(!q||q.length<2){wrap.innerHTML=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:8px">Common Foods</div>${renderCommonFoodCards(COMMON_FOODS.slice(0,12))}`;return}
+  // Show local matches instantly
+  const local=searchLocal(q);
+  let html='';
+  if(local.length)html+=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:8px">Quick Match</div>${renderCommonFoodCards(local)}`;
+  html+=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin:${local.length?14:0}px 0 8px">USDA Database <span id="usda-status" style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--text3);font-size:10px">searching…</span></div><div id="usda-results"></div>`;
+  wrap.innerHTML=html;
+  searchTimer=setTimeout(()=>searchUSDA(q),500);
+}
+async function searchUSDA(q){
+  const el=document.getElementById('usda-results'),st=document.getElementById('usda-status');
+  if(!el)return;
   try{
-    const url=`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=12&api_key=DEMO_KEY`;
-    const res=await fetch(url),data=await res.json(),foods=(data.foods||[]).slice(0,10);
-    if(!foods.length){wrap.innerHTML=`<div class="text-muted" style="padding:16px 0;text-align:center;">No results found</div>`;return}
+    const res=await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=10&api_key=DEMO_KEY`);
+    if(st)st.textContent='';
+    if(res.status===429){el.innerHTML=`<div style="padding:10px 0;font-size:13px;color:var(--warn)">⚠️ USDA search limit reached — use Common Foods above or try again later</div>`;return}
+    if(!res.ok){el.innerHTML=`<div style="padding:10px 0;font-size:13px;color:var(--text2)">USDA unavailable (${res.status}) — use Common Foods above</div>`;return}
+    const data=await res.json(),foods=(data.foods||[]).slice(0,10);
+    if(!foods.length){el.innerHTML=`<div style="padding:10px 0;font-size:13px;color:var(--text3)">No USDA results — try different spelling</div>`;return}
     searchResults=foods.map(f=>({fdcId:f.fdcId,name:f.description,brand:f.brandOwner||f.brandName||'',nutrients:f.foodNutrients||[]}));
-    wrap.innerHTML=searchResults.map((f,i)=>{const kcal=getNutrient(f.nutrients,[1008,2047]);return`<div class="food-card" onclick="openAddSheet(${i})"><div style="min-width:0;flex:1"><div class="food-card-name">${f.name}</div>${f.brand?`<div class="food-card-brand">${f.brand}</div>`:''}</div><div class="food-card-kcal">${kcal||'—'}<br><span class="food-card-unit">kcal/100g</span></div></div>`}).join('');
-  }catch(e){wrap.innerHTML=`<div class="text-muted" style="padding:16px 0;text-align:center;">Search unavailable — check connection</div>`}
+    el.innerHTML=searchResults.map((f,i)=>{const kcal=getNutrient(f.nutrients,[1008,2047]);return`<div class="food-card" onclick="openAddSheet(${i})"><div style="min-width:0;flex:1"><div class="food-card-name">${f.name}</div>${f.brand?`<div class="food-card-brand">${f.brand}</div>`:''}</div><div class="food-card-kcal">${kcal||'—'}<br><span class="food-card-unit">kcal/100g</span></div></div>`}).join('');
+  }catch(e){if(el)el.innerHTML=`<div style="padding:10px 0;font-size:13px;color:var(--text2)">USDA search unavailable — use Common Foods above</div>`}
 }
 function getNutrient(nutrients,ids){for(const id of ids){const n=nutrients.find(n=>n.nutrientId===id||n.nutrientNumber===String(id));if(n&&n.value!=null)return Math.round(n.value)}return null}
 function openAddSheet(idx){
-  const food=searchResults[idx];if(!food)return;pendingFood=food;
+  const food=searchResults[idx];if(!food)return;
   const n=food.nutrients,kcal=getNutrient(n,[1008,2047])||0,carbs=getNutrient(n,[1005])||0,protein=getNutrient(n,[1003])||0,fat=getNutrient(n,[1004])||0,fiber=getNutrient(n,[1079])||0,sugar=getNutrient(n,[2000])||0,sodium=getNutrient(n,[1093])||0;
-  pendingFood.kcalPer100=kcal;pendingFood.carbsPer100=carbs;pendingFood.proteinPer100=protein;pendingFood.fatPer100=fat;
-  document.getElementById('add-sheet-body').innerHTML=`<div class="sheet-handle"></div><div class="sheet-title">${food.name}</div>${food.brand?`<div class="sheet-sub">${food.brand}</div>`:'<div style="margin-bottom:12px"></div>'}<div class="nf-grid"><div class="nf-cell"><div class="nf-val nf-cal" id="sh-kcal">${kcal}</div><div class="nf-name">kcal</div></div><div class="nf-cell"><div class="nf-val nf-carb" id="sh-carb">${carbs}g</div><div class="nf-name">Carbs</div></div><div class="nf-cell"><div class="nf-val nf-prot" id="sh-prot">${protein}g</div><div class="nf-name">Protein</div></div><div class="nf-cell"><div class="nf-val nf-fat" id="sh-fat">${fat}g</div><div class="nf-name">Fat</div></div></div><div class="nf-extra">Fiber ${fiber}g &nbsp;·&nbsp; Sugar ${sugar}g &nbsp;·&nbsp; Sodium ${sodium}mg</div><div class="srv-row"><div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="sh-qty" type="number" value="1" min="0.25" step="0.25" oninput="updateSheetNutrients()"></div><div class="form-group"><label class="form-label">Unit</label><select class="form-input" id="sh-unit" onchange="updateSheetNutrients()"><option value="100g" data-grams="100">100g</option><option value="serving (28g)" data-grams="28">serving (28g)</option><option value="oz" data-grams="28.35">oz</option><option value="cup (240g)" data-grams="240">cup (240g)</option></select></div></div><div class="form-group"><label class="form-label">Meal</label><select class="form-input" id="sh-meal">${MEAL_TYPES.map(m=>`<option value="${m}" ${m===pendingMeal?'selected':''}>${m}</option>`).join('')}</select></div><button class="btn btn-primary" onclick="addToLog()">Add to Log</button>`;
+  pendingFood={name:food.name,brand:food.brand||'',kcalPer100:kcal,carbsPer100:carbs,proteinPer100:protein,fatPer100:fat,fiber,sugar,sodium};
+  showAddSheetFromPending();
+}
+function showAddSheetFromPending(){
+  const f=pendingFood;
+  document.getElementById('add-sheet-body').innerHTML=`<div class="sheet-handle"></div><div class="sheet-title">${f.name}</div>${f.brand?`<div class="sheet-sub">${f.brand}</div>`:'<div style="margin-bottom:12px"></div>'}<div class="nf-grid"><div class="nf-cell"><div class="nf-val nf-cal" id="sh-kcal">${f.kcalPer100}</div><div class="nf-name">kcal</div></div><div class="nf-cell"><div class="nf-val nf-carb" id="sh-carb">${f.carbsPer100}g</div><div class="nf-name">Carbs</div></div><div class="nf-cell"><div class="nf-val nf-prot" id="sh-prot">${f.proteinPer100}g</div><div class="nf-name">Protein</div></div><div class="nf-cell"><div class="nf-val nf-fat" id="sh-fat">${f.fatPer100}g</div><div class="nf-name">Fat</div></div></div><div class="nf-extra">Fiber ${f.fiber||0}g &nbsp;·&nbsp; Sugar ${f.sugar||0}g &nbsp;·&nbsp; Sodium ${f.sodium||0}mg</div><div class="srv-row"><div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="sh-qty" type="number" value="1" min="0.25" step="0.25" oninput="updateSheetNutrients()" inputmode="decimal"></div><div class="form-group"><label class="form-label">Unit</label><select class="form-input" id="sh-unit" onchange="updateSheetNutrients()"><option value="100g" data-grams="100">100g</option><option value="oz" data-grams="28.35">oz</option><option value="serving (28g)" data-grams="28">serving (28g)</option><option value="cup (240g)" data-grams="240">cup (240g)</option></select></div></div><div class="form-group"><label class="form-label">Meal</label><select class="form-input" id="sh-meal">${MEAL_TYPES.map(m=>`<option value="${m}" ${m===pendingMeal?'selected':''}>${m}</option>`).join('')}</select></div><button class="btn btn-primary" onclick="addToLog()">Add to Log</button>`;
   document.getElementById('add-sheet-overlay').classList.add('open');
 }
 function updateSheetNutrients(){const qty=parseFloat(document.getElementById('sh-qty')?.value)||1,unitEl=document.getElementById('sh-unit'),grams=parseFloat(unitEl?.selectedOptions[0]?.dataset.grams||100),scale=(qty*grams)/100;document.getElementById('sh-kcal').textContent=Math.round((pendingFood.kcalPer100||0)*scale);document.getElementById('sh-carb').textContent=Math.round((pendingFood.carbsPer100||0)*scale)+'g';document.getElementById('sh-prot').textContent=Math.round((pendingFood.proteinPer100||0)*scale)+'g';document.getElementById('sh-fat').textContent=Math.round((pendingFood.fatPer100||0)*scale)+'g'}
