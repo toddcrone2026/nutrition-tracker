@@ -462,7 +462,7 @@ async function searchUSDA(q){
   const el=document.getElementById('usda-results'),st=document.getElementById('usda-status');
   if(!el)return;
   try{
-    const res=await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=10&api_key=DEMO_KEY`);
+    const res=await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=10&api_key=WDDczfqbg9mHRpkDTnckbkCDjLbMRK8kwt8TfWFQ`);
     if(st)st.textContent='';
     if(res.status===429){el.innerHTML=`<div style="padding:10px 0;font-size:13px;color:var(--warn)">⚠️ USDA search limit reached — use Common Foods above or try again later</div>`;return}
     if(!res.ok){el.innerHTML=`<div style="padding:10px 0;font-size:13px;color:var(--text2)">USDA unavailable (${res.status}) — use Common Foods above</div>`;return}
