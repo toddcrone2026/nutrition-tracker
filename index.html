@@ -464,13 +464,13 @@ async function searchUSDA(q){
   try{
     const res=await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=10&api_key=WDDczfqbg9mHRpkDTnckbkCDjLbMRK8kwt8TfWFQ`);
     if(st)st.textContent='';
-    if(res.status===429){el.innerHTML=`<div style="padding:10px 0;font-size:13px;color:var(--warn)">⚠️ USDA search limit reached — use Common Foods above or try again later</div>`;return}
-    if(!res.ok){el.innerHTML=`<div style="padding:10px 0;font-size:13px;color:var(--text2)">USDA unavailable (${res.status}) — use Common Foods above</div>`;return}
+    if(res.status===429){el.innerHTML=`<div style="padding:10px 0;font-size:13px;color:var(--warn)">⚠️ Rate limited (429) — try again in a few minutes</div>`;return}
+    if(!res.ok){el.innerHTML=`<div style="padding:10px 0;font-size:13px;color:var(--text2)">USDA error: HTTP ${res.status} — use Common Foods above</div>`;return}
     const data=await res.json(),foods=(data.foods||[]).slice(0,10);
     if(!foods.length){el.innerHTML=`<div style="padding:10px 0;font-size:13px;color:var(--text3)">No USDA results — try different spelling</div>`;return}
     searchResults=foods.map(f=>({fdcId:f.fdcId,name:f.description,brand:f.brandOwner||f.brandName||'',nutrients:f.foodNutrients||[]}));
     el.innerHTML=searchResults.map((f,i)=>{const kcal=getNutrient(f.nutrients,[1008,2047]);return`<div class="food-card" onclick="openAddSheet(${i})"><div style="min-width:0;flex:1"><div class="food-card-name">${f.name}</div>${f.brand?`<div class="food-card-brand">${f.brand}</div>`:''}</div><div class="food-card-kcal">${kcal||'—'}<br><span class="food-card-unit">kcal/100g</span></div></div>`}).join('');
-  }catch(e){if(el)el.innerHTML=`<div style="padding:10px 0;font-size:13px;color:var(--text2)">USDA search unavailable — use Common Foods above</div>`}
+  }catch(e){if(el)el.innerHTML=`<div style="padding:10px 0;font-size:13px;color:var(--text2)">USDA error: ${e.message||e} — use Common Foods above</div>`}
 }
 function getNutrient(nutrients,ids){for(const id of ids){const n=nutrients.find(n=>n.nutrientId===id||n.nutrientNumber===String(id));if(n&&n.value!=null)return Math.round(n.value)}return null}
 function openAddSheet(idx){
