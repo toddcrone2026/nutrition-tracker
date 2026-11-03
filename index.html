@@ -28,7 +28,6 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .macro-strip{padding:8px 0 10px}
 .macro-strip-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .macro-strip-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2)}
-.macro-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .cal-tile{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:10px;padding:8px 10px}
 .cal-ring{position:relative;width:36px;height:36px;flex-shrink:0}
 .cal-ring svg{transform:rotate(-90deg)}
@@ -41,18 +40,27 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .cal-num{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
 .cal-of{font-size:10px;color:var(--text2)}
 .cal-rem{font-size:10px;color:var(--text3);font-variant-numeric:tabular-nums}
-.macro-ring-tile{background:var(--surface2);border-radius:12px;padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
-.macro-ring-tile .tile-name{font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-.macro-ring-tile .tile-val{font-size:14px;font-weight:800;color:var(--text1);line-height:1;font-variant-numeric:tabular-nums}
-.macro-ring-tile .tile-unit{font-size:9px;color:var(--text3)}
+.macro-tiles{display:grid;grid-template-columns:1fr;gap:0}
+.macro-summary-row{display:flex;align-items:center;gap:12px;background:var(--surface2);border-radius:14px;padding:14px 12px}
+.pie-ring-wrap{position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;width:96px;height:96px}
+.pie-ring-wrap svg{position:absolute;inset:0}
+.pie-ring-center{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.pie-cal-num{font-size:18px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.pie-cal-label{font-size:10px;color:var(--text2);font-variant-numeric:tabular-nums}
+.pie-cal-unit{font-size:9px;color:var(--text3)}
+.macro-rings-col{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
+.macro-ring-tile{display:flex;align-items:center;gap:8px}
 .macro-ring-tile.over .tile-val{color:var(--danger)}
 .macro-ring-tile.warn .tile-val{color:var(--warn)}
-.mring{position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px}
+.tile-info{min-width:0}
+.tile-info .tile-name{font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.tile-info .tile-val{font-size:14px;font-weight:800;color:var(--text1);line-height:1.2;font-variant-numeric:tabular-nums}
+.tile-info .tile-unit{font-size:11px;font-weight:400;color:var(--text3)}
+.mring{position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .mring svg{transform:rotate(-90deg)}
 .mring-pct{position:absolute;font-size:8px;font-weight:800;color:var(--text2)}
 .mring-bg{fill:none;stroke:var(--border);stroke-width:3}
 .mring-fill{fill:none;stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset .5s ease}
-.mring-fill.cal{stroke:var(--primary)}
 .mring-fill.carbs{stroke:#7c5cfc}
 .mring-fill.protein{stroke:var(--primary)}
 .mring-fill.fat{stroke:var(--teal)}
@@ -364,6 +372,37 @@ function ringHtml(pct,cls){
   const st=pct>1?'over':pct>0.85?'warn':cls;
   return `<div class="mring"><svg width="44" height="44" viewBox="0 0 44 44"><circle class="mring-bg" cx="22" cy="22" r="${r}"/><circle class="mring-fill ${st}" cx="22" cy="22" r="${r}" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${dash.toFixed(2)}"/></svg><span class="mring-pct">${Math.round(pct*100)}%</span></div>`;
 }
+function pieRingHtml(totals,targets){
+  // Pie ring: carbs=purple, protein=orange, fat=teal, remaining=border color
+  // Each segment is a stroke-dasharray arc on its own circle
+  const r=38,circ=2*Math.PI*r,cx=48,cy=48,size=96;
+  const totalKcal=targets.kcal||1;
+  const carbKcal=totals.carbs*4,protKcal=totals.protein*4,fatKcal=totals.fat*9;
+  const usedKcal=Math.min(carbKcal+protKcal+fatKcal,totalKcal);
+  // fractions of the full circle
+  const fCarb=Math.min(carbKcal/totalKcal,1);
+  const fProt=Math.min(protKcal/totalKcal,1-fCarb);
+  const fFat=Math.min(fatKcal/totalKcal,1-fCarb-fProt);
+  function arc(frac,offset,color){
+    if(frac<=0)return'';
+    const dash=(frac*circ).toFixed(2),gap=(circ-frac*circ).toFixed(2);
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="butt" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${(-offset*circ).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>`;
+  }
+  const calPct=Math.round(Math.min(usedKcal/totalKcal,1)*100);
+  return `<div class="pie-ring-wrap">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="10"/>
+      ${arc(fCarb,0,'#7c5cfc')}
+      ${arc(fProt,fCarb,'var(--primary)')}
+      ${arc(fFat,fCarb+fProt,'var(--teal)')}
+    </svg>
+    <div class="pie-ring-center">
+      <div class="pie-cal-num">${totals.kcal}</div>
+      <div class="pie-cal-label">of ${targets.kcal}</div>
+      <div class="pie-cal-unit">kcal</div>
+    </div>
+  </div>`;
+}
 function renderMacroBar(){
   const targets=calcTargets(profile||{},getTodayLoad()),totals=calcTotals(foodLog);
   targetsCache=targets;
@@ -372,17 +411,22 @@ function renderMacroBar(){
   const lC={rest:'load-rest',easy:'load-easy',hard:'load-hard',long:'load-long'};
   document.getElementById('load-badge-wrap').innerHTML=`<span class="load-badge ${lC[load]}">${lL[load]}</span>`;
   function st(c,t){return c>t?'over':c/t>0.85?'warn':''}
-  const tiles=[
-    {label:'Calories',val:totals.kcal,target:targets.kcal,unit:'kcal',cls:'cal'},
+  const macros=[
     {label:'Carbs',val:totals.carbs,target:targets.carbs,unit:'g',cls:'carbs'},
     {label:'Protein',val:totals.protein,target:targets.protein,unit:'g',cls:'protein'},
     {label:'Fat',val:totals.fat,target:targets.fat,unit:'g',cls:'fat'}
   ];
-  document.getElementById('macro-pills-wrap').innerHTML=tiles.map(m=>{
-    const pct=m.target>0?m.val/m.target:0;
-    const s=st(m.val,m.target);
-    return `<div class="macro-ring-tile ${s}">${ringHtml(pct,m.cls)}<div class="tile-val">${m.val}</div><div class="tile-unit">${m.unit}</div><div class="tile-name">${m.label}</div></div>`;
-  }).join('');
+  document.getElementById('macro-pills-wrap').innerHTML=`
+    <div class="macro-summary-row">
+      ${pieRingHtml(totals,targets)}
+      <div class="macro-rings-col">
+        ${macros.map(m=>{
+          const pct=m.target>0?m.val/m.target:0;
+          const s=st(m.val,m.target);
+          return `<div class="macro-ring-tile ${s}">${ringHtml(pct,m.cls)}<div class="tile-info"><div class="tile-name">${m.label}</div><div class="tile-val">${m.val}<span class="tile-unit"> / ${m.target}${m.unit}</span></div></div></div>`;
+        }).join('')}
+      </div>
+    </div>`;
 }
 
 window.addEventListener('load',()=>{
