@@ -116,6 +116,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .log-item-kcal{font-size:13px;font-weight:700;color:var(--primary);white-space:nowrap}
 .del-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:2px 4px}
 .del-btn:active{color:var(--danger)}
+.edit-chevron{color:var(--text3);font-size:20px;flex-shrink:0;line-height:1}
+.log-item{cursor:pointer}
 .meal-empty{padding:10px 14px;font-size:13px;color:var(--text3)}
 .search-box{position:relative;margin-bottom:12px}
 .search-box input{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:12px 42px 12px 14px;font-family:var(--font);font-size:15px;color:var(--text1);outline:none}
@@ -321,7 +323,7 @@ function searchLocal(q){const terms=q.toLowerCase().split(/\s+/);return COMMON_F
 function renderCommonFoodCards(list){return list.map((f,i)=>{const idx=COMMON_FOODS.indexOf(f);return`<div class="food-card" onclick="openLocalFood(${idx})"><div style="min-width:0;flex:1"><div class="food-card-name">${f.name}</div><div class="food-card-brand" style="color:var(--text3);font-size:10px">Built-in · per 100g</div></div><div class="food-card-kcal">${f.kcal}<br><span class="food-card-unit">kcal</span></div></div>`}).join('')}
 function openLocalFood(idx){const f=COMMON_FOODS[idx];if(!f)return;pendingFood={name:f.name,brand:'',kcalPer100:f.kcal,carbsPer100:f.carbs,proteinPer100:f.protein,fatPer100:f.fat,fiber:f.fiber,sugar:f.sugar,sodium:f.sodium};showAddSheetFromPending()}
 
-let profile=null,userId=null,currentTab='log',selectedDate=todayStr(),foodLog=[],pendingFood=null,searchResults=[],searchTimer=null,targetsCache=null,pendingMeal='Breakfast';
+let profile=null,userId=null,currentTab='log',selectedDate=todayStr(),foodLog=[],pendingFood=null,searchResults=[],searchTimer=null,targetsCache=null,pendingMeal='Breakfast',pendingEditIdx=-1;
 const MEAL_TYPES=['Breakfast','Lunch','Dinner','Snacks'];
 const MEAL_ICONS={Breakfast:'🌅',Lunch:'☀️',Dinner:'🌙',Snacks:'🍎'};
 
@@ -502,7 +504,7 @@ function renderLogTab(){
     const mealCals=entries.reduce((s,e)=>s+Math.round((e.kcalPer||0)*(e.servingQty||1)),0);
     html+=`<div class="meal-card"><div class="meal-hd"><div class="meal-hd-left"><span class="meal-icon">${MEAL_ICONS[meal]||'🍽'}</span><span class="meal-name">${meal}</span><span class="meal-kcal">${mealCals} kcal</span></div><button class="add-btn" onclick="goSearch('${meal}')">+ Add</button></div>`;
     if(entries.length===0){html+=`<div class="meal-empty">No foods logged</div>`}
-    else{entries.forEach(e=>{const gi=foodLog.indexOf(e),cal=Math.round((e.kcalPer||0)*(e.servingQty||1));html+=`<div class="log-item"><div class="log-item-left"><div class="log-item-name">${e.name}</div><div class="log-item-srv">${e.servingUnit}</div></div><div class="log-item-kcal">${cal} kcal</div><button class="del-btn" onclick="deleteLogEntry(${gi})">✕</button></div>`})}
+    else{entries.forEach(e=>{const gi=foodLog.indexOf(e),cal=Math.round((e.kcalPer||0)*(e.servingQty||1));html+=`<div class="log-item" onclick="editLogEntry(${gi})"><div class="log-item-left"><div class="log-item-name">${e.name}</div><div class="log-item-srv">${e.servingUnit}</div></div><div class="log-item-kcal">${cal} kcal</div><span class="edit-chevron">›</span></div>`})}
     html+=`</div>`;
   });
   if(totalLogged===0)html+=`<div class="empty"><div class="empty-icon">🥗</div><div class="empty-msg">Tap "+ Add" to log your first meal</div><div class="empty-sub">Search foods and track your macros</div></div>`;
@@ -510,7 +512,65 @@ function renderLogTab(){
 }
 function goSearch(meal){pendingMeal=meal;switchTab('search')}
 function selectDay(date){selectedDate=date;updateHeaderDate();loadFoodLog(date)}
-function deleteLogEntry(idx){foodLog.splice(idx,1);saveFoodLog();renderLogTab();showToast('Removed')}
+function deleteLogEntry(idx){foodLog.splice(idx,1);saveFoodLog();renderLogTab();renderMacroBar();showToast('Removed')}
+function editLogEntry(idx){
+  const e=foodLog[idx];
+  if(!e)return;
+  pendingEditIdx=idx;
+  const qty=e.servingQty||1;
+  const unit=e.servingUnit||'1 serving';
+  const cal=Math.round((e.kcalPer||0)*qty);
+  document.getElementById('add-sheet-body').innerHTML=`<div class="sheet-handle"></div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px">
+      <div class="sheet-title" style="margin:0">${e.name}</div>
+    </div>
+    <div class="nf-grid">
+      <div class="nf-cell"><div class="nf-val nf-cal" id="sh-kcal">${Math.round((e.kcalPer||0)*qty)}</div><div class="nf-name">kcal</div></div>
+      <div class="nf-cell"><div class="nf-val nf-carb" id="sh-carb">${Math.round((e.carbsPer||0)*qty)}g</div><div class="nf-name">Carbs</div></div>
+      <div class="nf-cell"><div class="nf-val nf-prot" id="sh-prot">${Math.round((e.proteinPer||0)*qty)}g</div><div class="nf-name">Protein</div></div>
+      <div class="nf-cell"><div class="nf-val nf-fat" id="sh-fat">${Math.round((e.fatPer||0)*qty)}g</div><div class="nf-name">Fat</div></div>
+    </div>
+    <div class="srv-row">
+      <div class="form-group"><label class="form-label">Amount</label>
+        <input class="form-input" id="sh-qty" type="number" value="${qty}" min="0.25" step="0.25" oninput="updateEditNutrients()" inputmode="decimal">
+      </div>
+      <div class="form-group"><label class="form-label">Unit</label>
+        <select class="form-input" id="sh-unit" onchange="updateEditNutrients()">
+          <option value="100g" data-grams="100" ${unit==='100g'?'selected':''}>100g</option>
+          <option value="oz" data-grams="28.35" ${unit==='oz'?'selected':''}>oz</option>
+          <option value="serving (28g)" data-grams="28" ${unit==='serving (28g)'?'selected':''}>serving (28g)</option>
+          <option value="cup (240g)" data-grams="240" ${unit==='cup (240g)'?'selected':''}>cup (240g)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Meal</label>
+      <select class="form-input" id="sh-meal">${MEAL_TYPES.map(m=>`<option value="${m}" ${m===e.meal?'selected':''}>${m}</option>`).join('')}</select>
+    </div>
+    <button class="btn btn-primary" onclick="saveEditedEntry()" style="margin-bottom:10px">Save Changes</button>
+    <button class="btn btn-secondary" onclick="deleteLogEntry(pendingEditIdx);closeAddSheet()">Remove</button>`;
+  document.getElementById('add-sheet-overlay').classList.add('open');
+}
+function updateEditNutrients(){
+  const e=foodLog[pendingEditIdx];if(!e)return;
+  const qty=parseFloat(document.getElementById('sh-qty')?.value)||1;
+  const unitEl=document.getElementById('sh-unit');
+  const grams=parseFloat(unitEl?.selectedOptions[0]?.dataset.grams||100);
+  const scale=(qty*grams)/100;
+  // These are per-100g values on the entry
+  const per100kcal=e.kcalPer/(e.servingQty||1)*((e.gramsPerServing||100)/100);
+  document.getElementById('sh-kcal').textContent=Math.round((e.kcalPer||0)*qty);
+  document.getElementById('sh-carb').textContent=Math.round((e.carbsPer||0)*qty)+'g';
+  document.getElementById('sh-prot').textContent=Math.round((e.proteinPer||0)*qty)+'g';
+  document.getElementById('sh-fat').textContent=Math.round((e.fatPer||0)*qty)+'g';
+}
+function saveEditedEntry(){
+  const e=foodLog[pendingEditIdx];if(!e)return;
+  const qty=parseFloat(document.getElementById('sh-qty')?.value)||1;
+  const unit=document.getElementById('sh-unit')?.value||e.servingUnit;
+  const meal=document.getElementById('sh-meal')?.value||e.meal;
+  foodLog[pendingEditIdx]={...e,servingQty:qty,servingUnit:unit,meal};
+  saveFoodLog();renderLogTab();renderMacroBar();closeAddSheet();showToast('Updated');
+}
 
 function renderSearchTab(){
   const c=document.getElementById('tab-content');
