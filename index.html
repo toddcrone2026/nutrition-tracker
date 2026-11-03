@@ -40,8 +40,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .cal-num{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
 .cal-of{font-size:10px;color:var(--text2)}
 .cal-rem{font-size:10px;color:var(--text3);font-variant-numeric:tabular-nums}
-.macro-tiles{display:grid;grid-template-columns:1fr;gap:0}
-.macro-summary-row{display:flex;align-items:center;gap:12px;background:var(--surface2);border-radius:14px;padding:14px 12px}
+.macro-tiles{display:block}
+.macro-summary-row{display:flex;align-items:center;gap:12px;background:var(--surface2);border-radius:14px;padding:14px 12px;width:100%;box-sizing:border-box}
 .pie-ring-wrap{position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;width:96px;height:96px}
 .pie-ring-wrap svg{position:absolute;inset:0}
 .pie-ring-center{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
