@@ -61,9 +61,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .mring-pct{position:absolute;font-size:8px;font-weight:800;color:var(--text2)}
 .mring-bg{fill:none;stroke:var(--border);stroke-width:3}
 .mring-fill{fill:none;stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset .5s ease}
-.mring-fill.carbs{stroke:#7c5cfc}
-.mring-fill.protein{stroke:var(--primary)}
-.mring-fill.fat{stroke:var(--teal)}
+.mring-fill.carbs{stroke:#f5a623}
+.mring-fill.protein{stroke:#27ae60}
+.mring-fill.fat{stroke:#e53935}
 .mring-fill.over{stroke:var(--danger)}
 .mring-fill.warn{stroke:var(--warn)}
 .tile-name{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)}
@@ -392,9 +392,9 @@ function pieRingHtml(totals,targets){
   return `<div class="pie-ring-wrap">
     <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
       <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="10"/>
-      ${arc(fCarb,0,'#7c5cfc')}
-      ${arc(fProt,fCarb,'var(--primary)')}
-      ${arc(fFat,fCarb+fProt,'var(--teal)')}
+      ${arc(fCarb,0,'#f5a623')}
+      ${arc(fProt,fCarb,'#27ae60')}
+      ${arc(fFat,fCarb+fProt,'#e53935')}
     </svg>
     <div class="pie-ring-center">
       <div class="pie-cal-num">${totals.kcal}</div>
