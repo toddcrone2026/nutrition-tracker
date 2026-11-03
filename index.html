@@ -28,7 +28,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .macro-strip{padding:8px 0 10px}
 .macro-strip-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .macro-strip-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2)}
-.macro-tiles{display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:6px}
+.macro-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .cal-tile{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:10px;padding:8px 10px}
 .cal-ring{position:relative;width:36px;height:36px;flex-shrink:0}
 .cal-ring svg{transform:rotate(-90deg)}
@@ -41,14 +41,23 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .cal-num{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
 .cal-of{font-size:10px;color:var(--text2)}
 .cal-rem{font-size:10px;color:var(--text3);font-variant-numeric:tabular-nums}
-.macro-tile{background:var(--surface2);border-radius:10px;padding:7px 8px 6px;display:flex;flex-direction:column;gap:2px;min-width:0}
-.macro-tile-bar{height:3px;background:var(--border);border-radius:99px;overflow:hidden;margin-top:3px}
-.macro-tile-fill{height:100%;border-radius:99px;transition:width .4s}
-.macro-tile-fill.carbs{background:#7c5cfc}
-.macro-tile-fill.protein{background:var(--primary)}
-.macro-tile-fill.fat{background:var(--teal)}
-.macro-tile.over .tile-val{color:var(--danger)}
-.macro-tile.warn .tile-val{color:var(--warn)}
+.macro-ring-tile{background:var(--surface2);border-radius:12px;padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.macro-ring-tile .tile-name{font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.macro-ring-tile .tile-val{font-size:14px;font-weight:800;color:var(--text1);line-height:1;font-variant-numeric:tabular-nums}
+.macro-ring-tile .tile-unit{font-size:9px;color:var(--text3)}
+.macro-ring-tile.over .tile-val{color:var(--danger)}
+.macro-ring-tile.warn .tile-val{color:var(--warn)}
+.mring{position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px}
+.mring svg{transform:rotate(-90deg)}
+.mring-pct{position:absolute;font-size:8px;font-weight:800;color:var(--text2)}
+.mring-bg{fill:none;stroke:var(--border);stroke-width:3}
+.mring-fill{fill:none;stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset .5s ease}
+.mring-fill.cal{stroke:var(--primary)}
+.mring-fill.carbs{stroke:#7c5cfc}
+.mring-fill.protein{stroke:var(--primary)}
+.mring-fill.fat{stroke:var(--teal)}
+.mring-fill.over{stroke:var(--danger)}
+.mring-fill.warn{stroke:var(--warn)}
 .tile-name{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)}
 .tile-val{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
 .tile-rem{font-size:9px;color:var(--text3);font-variant-numeric:tabular-nums}
@@ -333,9 +342,28 @@ function calcTargets(p,load){
   const carbKcal=kcal-protKcal-fatKcal;
   return{kcal,carbs:Math.round(carbKcal/4),protein:Math.round(protKcal/4),fat:Math.round(fatKcal/9)};
 }
-function getTodayLoad(){return profile?.trainingLoad||'easy'}
+function getTodayLoad(){
+  // Read today's workout from marathon app if available
+  try{
+    const mw=JSON.parse(localStorage.getItem('nt_marathon_today')||'null');
+    if(mw&&mw.date===todayStr()){
+      const miles=mw.miles||0,type=mw.type||'';
+      if(type==='rest')return'rest';
+      if(type==='recovery'||miles<=3)return'easy';
+      if(type==='long'||miles>=10)return'long';
+      if(miles>=6)return'hard';
+      return'easy';
+    }
+  }catch(e){}
+  return profile?.trainingLoad||'easy';
+}
 function calcTotals(entries){return entries.reduce((acc,e)=>{const s=e.servingQty||1;acc.kcal+=Math.round((e.kcalPer||0)*s);acc.carbs+=Math.round((e.carbsPer||0)*s);acc.protein+=Math.round((e.proteinPer||0)*s);acc.fat+=Math.round((e.fatPer||0)*s);return acc},{kcal:0,carbs:0,protein:0,fat:0})}
 
+function ringHtml(pct,cls){
+  const r=18,circ=2*Math.PI*r,dash=circ-(Math.min(pct,1)*circ);
+  const st=pct>1?'over':pct>0.85?'warn':cls;
+  return `<div class="mring"><svg width="44" height="44" viewBox="0 0 44 44"><circle class="mring-bg" cx="22" cy="22" r="${r}"/><circle class="mring-fill ${st}" cx="22" cy="22" r="${r}" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${dash.toFixed(2)}"/></svg><span class="mring-pct">${Math.round(pct*100)}%</span></div>`;
+}
 function renderMacroBar(){
   const targets=calcTargets(profile||{},getTodayLoad()),totals=calcTotals(foodLog);
   targetsCache=targets;
@@ -343,30 +371,18 @@ function renderMacroBar(){
   const lL={rest:'Rest Day',easy:'Easy Run',hard:'Hard Run',long:'Long Run'};
   const lC={rest:'load-rest',easy:'load-easy',hard:'load-hard',long:'load-long'};
   document.getElementById('load-badge-wrap').innerHTML=`<span class="load-badge ${lC[load]}">${lL[load]}</span>`;
-  const calPct=Math.min(totals.kcal/targets.kcal,1);
-  const calOver=totals.kcal>targets.kcal,calWarn=!calOver&&totals.kcal/targets.kcal>0.85;
-  const r=14,circ=2*Math.PI*r,dash=circ-calPct*circ;
-  const ringCls=calOver?'over':calWarn?'warn':'';
-  const calRem=targets.kcal-totals.kcal;
-  function ts(c,t){if(c>t)return'over';if(c/t>0.85)return'warn';return''}
-  function fw(c,t){return Math.min(Math.round(c/t*100),100)+'%'}
-  const macros=[{label:'Carbs',val:totals.carbs,target:targets.carbs,cls:'carbs'},{label:'Protein',val:totals.protein,target:targets.protein,cls:'protein'},{label:'Fat',val:totals.fat,target:targets.fat,cls:'fat'}];
-  document.getElementById('macro-pills-wrap').innerHTML=`
-    <div class="cal-tile">
-      <div class="cal-ring">
-        <svg width="36" height="36" viewBox="0 0 36 36">
-          <circle class="ring-bg" cx="18" cy="18" r="${r}"/>
-          <circle class="ring-fill ${ringCls}" cx="18" cy="18" r="${r}" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${dash.toFixed(2)}"/>
-        </svg>
-        <div class="ring-pct">${Math.round(calPct*100)}%</div>
-      </div>
-      <div class="cal-info">
-        <div class="cal-num">${totals.kcal}</div>
-        <div class="cal-of">of ${targets.kcal} kcal</div>
-        <div class="cal-rem">${calOver?Math.abs(calRem)+' over':calRem+' left'}</div>
-      </div>
-    </div>
-    ${macros.map(m=>{const rem=m.target-m.val,st=ts(m.val,m.target);return`<div class="macro-tile ${st}"><div class="tile-name">${m.label}</div><div class="tile-val">${m.val}g</div><div class="tile-rem">${m.val>m.target?m.val-m.target+'g over':rem+'g left'}</div><div class="macro-tile-bar"><div class="macro-tile-fill ${m.cls}" style="width:${fw(m.val,m.target)}"></div></div></div>`}).join('')}`;
+  function st(c,t){return c>t?'over':c/t>0.85?'warn':''}
+  const tiles=[
+    {label:'Calories',val:totals.kcal,target:targets.kcal,unit:'kcal',cls:'cal'},
+    {label:'Carbs',val:totals.carbs,target:targets.carbs,unit:'g',cls:'carbs'},
+    {label:'Protein',val:totals.protein,target:targets.protein,unit:'g',cls:'protein'},
+    {label:'Fat',val:totals.fat,target:targets.fat,unit:'g',cls:'fat'}
+  ];
+  document.getElementById('macro-pills-wrap').innerHTML=tiles.map(m=>{
+    const pct=m.target>0?m.val/m.target:0;
+    const s=st(m.val,m.target);
+    return `<div class="macro-ring-tile ${s}">${ringHtml(pct,m.cls)}<div class="tile-val">${m.val}</div><div class="tile-unit">${m.unit}</div><div class="tile-name">${m.label}</div></div>`;
+  }).join('');
 }
 
 window.addEventListener('load',()=>{
