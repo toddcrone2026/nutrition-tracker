@@ -41,21 +41,20 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .cal-of{font-size:10px;color:var(--text2)}
 .cal-rem{font-size:10px;color:var(--text3);font-variant-numeric:tabular-nums}
 .macro-tiles{display:block}
-.macro-summary-row{display:flex;align-items:center;gap:12px;background:var(--surface2);border-radius:14px;padding:14px 12px;width:100%;box-sizing:border-box}
-.pie-ring-wrap{position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;width:96px;height:96px}
+.macro-summary-row{display:flex;justify-content:center;padding:10px 0 6px}
+.pie-ring-wrap{position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;width:120px;height:120px}
 .pie-ring-wrap svg{position:absolute;inset:0}
 .pie-ring-center{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
-.pie-cal-num{font-size:18px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.pie-cal-num{font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 .pie-cal-label{font-size:10px;color:var(--text2);font-variant-numeric:tabular-nums}
 .pie-cal-unit{font-size:9px;color:var(--text3)}
-.macro-rings-col{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0;justify-content:center}
-.macro-ring-tile{display:flex;align-items:center;gap:10px;width:100%}
+.macro-rings-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.macro-ring-tile{background:var(--surface2);border-radius:12px;padding:10px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .macro-ring-tile.over .tile-val{color:var(--danger)}
 .macro-ring-tile.warn .tile-val{color:var(--warn)}
-.tile-info{min-width:0}
-.tile-info .tile-name{font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-.tile-info .tile-val{font-size:14px;font-weight:800;color:var(--text1);line-height:1.2;font-variant-numeric:tabular-nums}
-.tile-info .tile-unit{font-size:11px;font-weight:400;color:var(--text3)}
+.tile-name{font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.tile-val{font-size:14px;font-weight:800;color:var(--text1);line-height:1.2;font-variant-numeric:tabular-nums}
+.tile-unit{font-size:10px;font-weight:400;color:var(--text3)}
 .mring{position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .mring svg{transform:rotate(-90deg)}
 .mring-pct{position:absolute;font-size:8px;font-weight:800;color:var(--text2)}
@@ -373,9 +372,7 @@ function ringHtml(pct,cls){
   return `<div class="mring"><svg width="44" height="44" viewBox="0 0 44 44"><circle class="mring-bg" cx="22" cy="22" r="${r}"/><circle class="mring-fill ${st}" cx="22" cy="22" r="${r}" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${dash.toFixed(2)}"/></svg><span class="mring-pct">${Math.round(pct*100)}%</span></div>`;
 }
 function pieRingHtml(totals,targets){
-  // Pie ring: carbs=purple, protein=orange, fat=teal, remaining=border color
-  // Each segment is a stroke-dasharray arc on its own circle
-  const r=38,circ=2*Math.PI*r,cx=48,cy=48,size=96;
+  const r=48,circ=2*Math.PI*r,cx=60,cy=60,size=120;
   const totalKcal=targets.kcal||1;
   const carbKcal=totals.carbs*4,protKcal=totals.protein*4,fatKcal=totals.fat*9;
   const usedKcal=Math.min(carbKcal+protKcal+fatKcal,totalKcal);
@@ -390,7 +387,7 @@ function pieRingHtml(totals,targets){
   }
   const calPct=Math.round(Math.min(usedKcal/totalKcal,1)*100);
   return `<div class="pie-ring-wrap">
-    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="width:${size}px;height:${size}px">
       <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="10"/>
       ${arc(fCarb,0,'#f5a623')}
       ${arc(fProt,fCarb,'#27ae60')}
@@ -419,13 +416,13 @@ function renderMacroBar(){
   document.getElementById('macro-pills-wrap').innerHTML=`
     <div class="macro-summary-row">
       ${pieRingHtml(totals,targets)}
-      <div class="macro-rings-col">
-        ${macros.map(m=>{
-          const pct=m.target>0?m.val/m.target:0;
-          const s=st(m.val,m.target);
-          return `<div class="macro-ring-tile ${s}">${ringHtml(pct,m.cls)}<div class="tile-info"><div class="tile-name">${m.label}</div><div class="tile-val">${m.val}<span class="tile-unit"> / ${m.target}${m.unit}</span></div></div></div>`;
-        }).join('')}
-      </div>
+    </div>
+    <div class="macro-rings-row">
+      ${macros.map(m=>{
+        const pct=m.target>0?m.val/m.target:0;
+        const s=st(m.val,m.target);
+        return `<div class="macro-ring-tile ${s}">${ringHtml(pct,m.cls)}<div class="tile-name">${m.label}</div><div class="tile-val">${m.val}<span class="tile-unit">/${m.target}${m.unit}</span></div></div>`;
+      }).join('')}
     </div>`;
 }
 
