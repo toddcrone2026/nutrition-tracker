@@ -11,6 +11,7 @@
 <style>
 :root{--bg:#f7f6f3;--surface:#fff;--surface2:#f0ece5;--border:#e4e0d8;--text1:#1a1814;--text2:#6b6760;--text3:#9b9590;--primary:#2d9e6b;--primary-dim:rgba(45,158,107,0.12);--warn:#e8862b;--warn-dim:rgba(232,134,43,0.12);--danger:#e53935;--teal:#2db5a3;--radius:16px;--radius-sm:10px;--font:'Figtree',system-ui,sans-serif;--nav-h:calc(56px + env(safe-area-inset-bottom,0px));color-scheme:light}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#131210;--surface:#1e1c19;--surface2:#252320;--border:#2e2b26;--text1:#f0ede8;--text2:#8a8680;--text3:#5a5850;--primary:#34c47e;--primary-dim:rgba(52,196,126,0.12);--warn:#f0973a;--warn-dim:rgba(240,151,58,0.12);color-scheme:dark}}
+:root[data-theme="light"]{--bg:#f7f6f3;--surface:#fff;--surface2:#f0ece5;--border:#e4e0d8;--text1:#1a1814;--text2:#6b6760;--text3:#9b9590;--primary:#2d9e6b;--primary-dim:rgba(45,158,107,0.12);--warn:#e8862b;--warn-dim:rgba(232,134,43,0.12);color-scheme:light}
 :root[data-theme="dark"]{--bg:#131210;--surface:#1e1c19;--surface2:#252320;--border:#2e2b26;--text1:#f0ede8;--text2:#8a8680;--text3:#5a5850;--primary:#34c47e;--primary-dim:rgba(52,196,126,0.12);--warn:#f0973a;--warn-dim:rgba(240,151,58,0.12);color-scheme:dark}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{height:100%}
@@ -222,6 +223,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
       </div>
       <div class="header-actions">
         <button class="icon-btn" onclick="window.open('https://toddcrone2026.github.io/marathon-tracker/','_blank')" title="Marathon Tracker">🏃</button>
+        <button class="icon-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
         <button class="icon-btn" onclick="openSettings()">⚙️</button>
       </div>
     </div>
@@ -668,6 +670,25 @@ function renderSettings(){
 function setLoad(load){profile.trainingLoad=load;saveProfile();renderMacroBar();renderSettings();if(currentTab==='summary')renderSummaryTab();showToast('Training load updated')}
 function saveStats(){const lbs=parseFloat(document.getElementById('s-lbs')?.value),age=parseInt(document.getElementById('s-age')?.value);if(lbs&&lbs>50)profile.weightLbs=lbs;if(age&&age>14)profile.age=age;saveProfile();renderMacroBar();renderSettings();if(currentTab==='summary')renderSummaryTab();showToast('Stats saved')}
 function resetApp(){if(!confirm('Reset all app data? This cannot be undone.'))return;try{localStorage.removeItem('nutrition_profile')}catch(e){}profile=null;userId=null;foodLog=[];showWizard()}
+
+function toggleTheme(){
+  const root=document.documentElement;
+  const cur=root.getAttribute('data-theme');
+  const sys=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+  // cycle: auto → dark → light → auto
+  let next;
+  if(!cur){next=sys==='dark'?'light':'dark';}
+  else if(cur==='dark'){next='light';}
+  else{next=null;}
+  if(next){root.setAttribute('data-theme',next);localStorage.setItem('nt_theme',next);}
+  else{root.removeAttribute('data-theme');localStorage.removeItem('nt_theme');}
+  updateThemeBtn();
+}
+function updateThemeBtn(){
+  const t=document.getElementById('theme-toggle-btn');if(!t)return;
+  const cur=document.documentElement.getAttribute('data-theme');
+  t.textContent=cur==='light'?'☀️':cur==='dark'?'🌙':'🌓';
+}
 </script>
 </body>
 </html>
