@@ -520,57 +520,57 @@ function editLogEntry(idx){
   if(!e)return;
   pendingEditIdx=idx;
   const qty=e.servingQty||1;
-  const unit=e.servingUnit||'1 serving';
-  const cal=Math.round((e.kcalPer||0)*qty);
+  const unit=e.servingUnit||'serving';
   document.getElementById('add-sheet-body').innerHTML=`<div class="sheet-handle"></div>
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px">
-      <div class="sheet-title" style="margin:0">${e.name}</div>
-    </div>
-    <div class="nf-grid">
-      <div class="nf-cell"><div class="nf-val nf-cal" id="sh-kcal">${Math.round((e.kcalPer||0)*qty)}</div><div class="nf-name">kcal</div></div>
-      <div class="nf-cell"><div class="nf-val nf-carb" id="sh-carb">${Math.round((e.carbsPer||0)*qty)}g</div><div class="nf-name">Carbs</div></div>
-      <div class="nf-cell"><div class="nf-val nf-prot" id="sh-prot">${Math.round((e.proteinPer||0)*qty)}g</div><div class="nf-name">Protein</div></div>
-      <div class="nf-cell"><div class="nf-val nf-fat" id="sh-fat">${Math.round((e.fatPer||0)*qty)}g</div><div class="nf-name">Fat</div></div>
-    </div>
-    <div class="srv-row">
-      <div class="form-group"><label class="form-label">Amount</label>
-        <input class="form-input" id="sh-qty" type="number" value="${qty}" min="0.25" step="0.25" oninput="updateEditNutrients()" inputmode="decimal">
-      </div>
-      <div class="form-group"><label class="form-label">Unit</label>
-        <select class="form-input" id="sh-unit" onchange="updateEditNutrients()">
-          <option value="100g" data-grams="100" ${unit==='100g'?'selected':''}>100g</option>
-          <option value="oz" data-grams="28.35" ${unit==='oz'?'selected':''}>oz</option>
-          <option value="serving (28g)" data-grams="28" ${unit==='serving (28g)'?'selected':''}>serving (28g)</option>
-          <option value="cup (240g)" data-grams="240" ${unit==='cup (240g)'?'selected':''}>cup (240g)</option>
-        </select>
-      </div>
-    </div>
+    <div class="sheet-title" style="margin-bottom:16px">${e.name}</div>
     <div class="form-group"><label class="form-label">Meal</label>
       <select class="form-input" id="sh-meal">${MEAL_TYPES.map(m=>`<option value="${m}" ${m===e.meal?'selected':''}>${m}</option>`).join('')}</select>
+    </div>
+    <div class="srv-row" style="margin-bottom:4px">
+      <div class="form-group"><label class="form-label">Amount</label>
+        <input class="form-input" id="sh-qty" type="number" value="${qty}" min="0.25" step="0.25" inputmode="decimal">
+      </div>
+      <div class="form-group"><label class="form-label">Unit / serving</label>
+        <input class="form-input" id="sh-unit" type="text" value="${unit}">
+      </div>
+    </div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin:14px 0 8px">Macros (actual totals for this entry)</div>
+    <div class="srv-row">
+      <div class="form-group"><label class="form-label">Calories</label>
+        <input class="form-input" id="sh-edit-kcal" type="number" value="${Math.round((e.kcalPer||0)*qty)}" min="0" inputmode="decimal">
+      </div>
+      <div class="form-group"><label class="form-label">Carbs (g)</label>
+        <input class="form-input" id="sh-edit-carb" type="number" value="${Math.round((e.carbsPer||0)*qty)}" min="0" inputmode="decimal">
+      </div>
+    </div>
+    <div class="srv-row">
+      <div class="form-group"><label class="form-label">Protein (g)</label>
+        <input class="form-input" id="sh-edit-prot" type="number" value="${Math.round((e.proteinPer||0)*qty)}" min="0" inputmode="decimal">
+      </div>
+      <div class="form-group"><label class="form-label">Fat (g)</label>
+        <input class="form-input" id="sh-edit-fat" type="number" value="${Math.round((e.fatPer||0)*qty)}" min="0" inputmode="decimal">
+      </div>
     </div>
     <button class="btn btn-primary" onclick="saveEditedEntry()" style="margin-bottom:10px">Save Changes</button>
     <button class="btn btn-secondary" onclick="deleteLogEntry(pendingEditIdx);closeAddSheet()">Remove</button>`;
   document.getElementById('add-sheet-overlay').classList.add('open');
-}
-function updateEditNutrients(){
-  const e=foodLog[pendingEditIdx];if(!e)return;
-  const qty=parseFloat(document.getElementById('sh-qty')?.value)||1;
-  const unitEl=document.getElementById('sh-unit');
-  const grams=parseFloat(unitEl?.selectedOptions[0]?.dataset.grams||100);
-  const scale=(qty*grams)/100;
-  // These are per-100g values on the entry
-  const per100kcal=e.kcalPer/(e.servingQty||1)*((e.gramsPerServing||100)/100);
-  document.getElementById('sh-kcal').textContent=Math.round((e.kcalPer||0)*qty);
-  document.getElementById('sh-carb').textContent=Math.round((e.carbsPer||0)*qty)+'g';
-  document.getElementById('sh-prot').textContent=Math.round((e.proteinPer||0)*qty)+'g';
-  document.getElementById('sh-fat').textContent=Math.round((e.fatPer||0)*qty)+'g';
 }
 function saveEditedEntry(){
   const e=foodLog[pendingEditIdx];if(!e)return;
   const qty=parseFloat(document.getElementById('sh-qty')?.value)||1;
   const unit=document.getElementById('sh-unit')?.value||e.servingUnit;
   const meal=document.getElementById('sh-meal')?.value||e.meal;
-  foodLog[pendingEditIdx]={...e,servingQty:qty,servingUnit:unit,meal};
+  // Read macro totals entered by user, store as per-serving (qty=1) values
+  const kcalTotal=parseFloat(document.getElementById('sh-edit-kcal')?.value)||0;
+  const carbTotal=parseFloat(document.getElementById('sh-edit-carb')?.value)||0;
+  const protTotal=parseFloat(document.getElementById('sh-edit-prot')?.value)||0;
+  const fatTotal=parseFloat(document.getElementById('sh-edit-fat')?.value)||0;
+  // Store as per-unit so the entry renders correctly
+  foodLog[pendingEditIdx]={...e,servingQty:qty,servingUnit:unit,meal,
+    kcalPer:qty>0?kcalTotal/qty:kcalTotal,
+    carbsPer:qty>0?carbTotal/qty:carbTotal,
+    proteinPer:qty>0?protTotal/qty:protTotal,
+    fatPer:qty>0?fatTotal/qty:fatTotal};
   saveFoodLog();renderLogTab();renderMacroBar();closeAddSheet();showToast('Updated');
 }
 
