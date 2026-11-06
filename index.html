@@ -224,7 +224,6 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
       </div>
       <div class="header-actions">
         <button class="icon-btn" onclick="window.open('https://toddcrone2026.github.io/marathon-tracker/','_blank')" title="Marathon Tracker">🏃</button>
-        <button class="icon-btn" onclick="openAINutrition()">🤖</button>
         <button class="icon-btn" onclick="openSettings()">⚙️</button>
       </div>
     </div>
@@ -520,6 +519,7 @@ function renderLogTab(){
     html+=`</div>`;
   });
   if(totalLogged===0)html+=`<div class="empty"><div class="empty-icon">🥗</div><div class="empty-msg">Tap "+ Add" to log your first meal</div><div class="empty-sub">Search foods and track your macros</div></div>`;
+  html+=`<button onclick="openAINutrition()" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),#ab47bc);border:none;border-radius:var(--radius);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;">🤖 Get AI Nutrition Feedback</button>`;
   c.innerHTML=html;
 }
 function goSearch(meal){pendingMeal=meal;switchTab('search')}
