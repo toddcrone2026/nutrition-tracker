@@ -649,13 +649,11 @@ function openAddSheet(idx){
 }
 function showAddSheetFromPending(){
   const f=pendingFood;
-  const hasServing=f.servingGrams&&f.servingGrams!==100;
-  const defaultUnit=hasServing?'serving':'grams';
-  const defaultQty=hasServing?1:100;
+
   const fav=isFavorite(f.name);
   const brandHtml=f.brand?`<div class="sheet-sub">${f.brand}</div>`:'';
   const mealOpts=MEAL_TYPES.map(m=>`<option value="${m}" ${m===pendingMeal?'selected':''}>${m}</option>`).join('');
-  document.getElementById('add-sheet-body').innerHTML=`<div class="sheet-handle"></div><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:${f.brand?4:12}px"><div class="sheet-title" style="margin:0">${f.name}</div><button onclick="toggleFavFromSheet()" style="background:none;border:none;font-size:22px;cursor:pointer;padding:0;line-height:1;flex-shrink:0">${fav?'⭐':'☆'}</button></div>${brandHtml}<div class="nf-grid"><div class="nf-cell"><div class="nf-val nf-cal" id="sh-kcal">${Math.round(f.kcalPer100)}</div><div class="nf-name">kcal</div></div><div class="nf-cell"><div class="nf-val nf-carb" id="sh-carb">${Math.round(f.carbsPer100)}g</div><div class="nf-name">Carbs</div></div><div class="nf-cell"><div class="nf-val nf-prot" id="sh-prot">${Math.round(f.proteinPer100)}g</div><div class="nf-name">Protein</div></div><div class="nf-cell"><div class="nf-val nf-fat" id="sh-fat">${Math.round(f.fatPer100)}g</div><div class="nf-name">Fat</div></div></div><div class="nf-extra">Fiber ${Math.round(f.fiber||0)}g &nbsp;·&nbsp; Sugar ${Math.round(f.sugar||0)}g &nbsp;·&nbsp; Sodium ${Math.round(f.sodium||0)}mg</div><div class="srv-row"><div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="sh-qty" type="number" value="${defaultQty}" min="1" step="1" oninput="updateSheetNutrients()" inputmode="decimal"></div><div class="form-group"><label class="form-label">Unit</label><select class="form-input" id="sh-unit" onchange="updateSheetNutrients()"><option value="grams" data-grams="1" ${defaultUnit==='grams'?'selected':''}>grams</option><option value="oz" data-grams="28.35">oz</option><option value="serving" data-grams="${f.servingGrams||100}" ${defaultUnit==='serving'?'selected':''}>serving</option></select></div></div><div class="form-group"><label class="form-label">Meal</label><select class="form-input" id="sh-meal">${mealOpts}</select></div><button class="btn btn-primary" onclick="addToLog()">Add to Log</button>`;
+  document.getElementById('add-sheet-body').innerHTML=`<div class="sheet-handle"></div><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:${f.brand?4:12}px"><div class="sheet-title" style="margin:0">${f.name}</div><button onclick="toggleFavFromSheet()" style="background:none;border:none;font-size:22px;cursor:pointer;padding:0;line-height:1;flex-shrink:0">${fav?'⭐':'☆'}</button></div>${brandHtml}<div class="nf-grid"><div class="nf-cell"><div class="nf-val nf-cal" id="sh-kcal">${Math.round(f.kcalPer100)}</div><div class="nf-name">kcal</div></div><div class="nf-cell"><div class="nf-val nf-carb" id="sh-carb">${Math.round(f.carbsPer100)}g</div><div class="nf-name">Carbs</div></div><div class="nf-cell"><div class="nf-val nf-prot" id="sh-prot">${Math.round(f.proteinPer100)}g</div><div class="nf-name">Protein</div></div><div class="nf-cell"><div class="nf-val nf-fat" id="sh-fat">${Math.round(f.fatPer100)}g</div><div class="nf-name">Fat</div></div></div><div class="nf-extra">Fiber ${Math.round(f.fiber||0)}g &nbsp;·&nbsp; Sugar ${Math.round(f.sugar||0)}g &nbsp;·&nbsp; Sodium ${Math.round(f.sodium||0)}mg</div><div class="srv-row"><div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="sh-qty" type="number" value="100" min="1" step="1" oninput="updateSheetNutrients()" inputmode="decimal"></div><div class="form-group"><label class="form-label">Unit</label><select class="form-input" id="sh-unit" onchange="updateSheetNutrients()"><option value="grams" data-grams="1">grams</option><option value="oz" data-grams="28.35">oz</option><option value="serving" data-grams="100">serving</option></select></div></div><div class="form-group"><label class="form-label">Meal</label><select class="form-input" id="sh-meal">${mealOpts}</select></div><button class="btn btn-primary" onclick="addToLog()">Add to Log</button>`;
   document.getElementById('add-sheet-overlay').classList.add('open');
 }
 function updateSheetNutrients(){const qty=parseFloat(document.getElementById('sh-qty')?.value)||1,unitEl=document.getElementById('sh-unit'),grams=parseFloat(unitEl?.selectedOptions[0]?.dataset.grams||100),scale=(qty*grams)/100;document.getElementById('sh-kcal').textContent=Math.round((pendingFood.kcalPer100||0)*scale);document.getElementById('sh-carb').textContent=Math.round((pendingFood.carbsPer100||0)*scale)+'g';document.getElementById('sh-prot').textContent=Math.round((pendingFood.proteinPer100||0)*scale)+'g';document.getElementById('sh-fat').textContent=Math.round((pendingFood.fatPer100||0)*scale)+'g'}
@@ -804,27 +802,11 @@ async function lookupBarcode(barcode) {
     const sugar = parseFloat(n['sugars_100g'] || 0);
     const sodium = parseFloat(n['sodium_100g'] || 0);
     // Try to get serving size in grams from product data
-    // Use _serving nutriment values + serving_quantity if available
-    const kcalServ = parseFloat(n['energy-kcal_serving'] || 0);
-    const carbsServ = parseFloat(n['carbohydrates_serving'] || 0);
-    const proteinServ = parseFloat(n['proteins_serving'] || 0);
-    const fatServ = parseFloat(n['fat_serving'] || 0);
-    const servingGrams = parseFloat(p.serving_quantity) || 0;
-    let kcalFinal = kcal, carbsFinal = carbs, proteinFinal = protein, fatFinal = fat;
-    let useServing = false;
-    if (kcalServ && servingGrams) {
-      const sc = 100 / servingGrams;
-      kcalFinal = kcalServ * sc;
-      carbsFinal = carbsServ * sc;
-      proteinFinal = proteinServ * sc;
-      fatFinal = fatServ * sc;
-      useServing = true;
-    }
-    if (!kcalFinal && !carbsFinal && !proteinFinal && !fatFinal) {
+    if (!kcal && !carbs && !protein && !fat) {
       showToast('No nutrition data for this product');
       return;
     }
-    pendingFood = { name, brand, kcalPer100: kcalFinal, carbsPer100: carbsFinal, proteinPer100: proteinFinal, fatPer100: fatFinal, fiber, sugar, sodium, servingGrams: useServing ? servingGrams : 0 };
+    pendingFood = { name, brand, kcalPer100: kcal, carbsPer100: carbs, proteinPer100: protein, fatPer100: fat, fiber, sugar, sodium };
     switchTab('search');
     showAddSheetFromPending();
   } catch(e) {
