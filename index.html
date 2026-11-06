@@ -804,12 +804,27 @@ async function lookupBarcode(barcode) {
     const sugar = parseFloat(n['sugars_100g'] || 0);
     const sodium = parseFloat(n['sodium_100g'] || 0);
     // Try to get serving size in grams from product data
-    const servingGrams = parseFloat(p.serving_quantity) || parseFloat(n['serving_size']) || 100;
-    if (!kcal && !carbs && !protein && !fat) {
+    // Use _serving nutriment values + serving_quantity if available
+    const kcalServ = parseFloat(n['energy-kcal_serving'] || 0);
+    const carbsServ = parseFloat(n['carbohydrates_serving'] || 0);
+    const proteinServ = parseFloat(n['proteins_serving'] || 0);
+    const fatServ = parseFloat(n['fat_serving'] || 0);
+    const servingGrams = parseFloat(p.serving_quantity) || 0;
+    let kcalFinal = kcal, carbsFinal = carbs, proteinFinal = protein, fatFinal = fat;
+    let useServing = false;
+    if (kcalServ && servingGrams) {
+      const sc = 100 / servingGrams;
+      kcalFinal = kcalServ * sc;
+      carbsFinal = carbsServ * sc;
+      proteinFinal = proteinServ * sc;
+      fatFinal = fatServ * sc;
+      useServing = true;
+    }
+    if (!kcalFinal && !carbsFinal && !proteinFinal && !fatFinal) {
       showToast('No nutrition data for this product');
       return;
     }
-    pendingFood = { name, brand, kcalPer100: kcal, carbsPer100: carbs, proteinPer100: protein, fatPer100: fat, fiber, sugar, sodium, servingGrams };
+    pendingFood = { name, brand, kcalPer100: kcalFinal, carbsPer100: carbsFinal, proteinPer100: proteinFinal, fatPer100: fatFinal, fiber, sugar, sodium, servingGrams: useServing ? servingGrams : 0 };
     switchTab('search');
     showAddSheetFromPending();
   } catch(e) {
