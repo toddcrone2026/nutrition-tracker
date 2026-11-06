@@ -1,4 +1,4 @@
-const CACHE = 'nutrition-v4';
+const CACHE = 'nutrition-v5';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
