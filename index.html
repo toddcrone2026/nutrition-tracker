@@ -264,10 +264,19 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
     <div id="ai-modal-body" style="padding:12px 16px 24px"></div>
   </div>
 </div>
-<div id="scanner-overlay" style="display:none;position:fixed;inset:0;background:#000;z-index:9999;flex-direction:column;align-items:center;justify-content:center">
-  <video id="scanner-video" style="width:100%;max-height:70vh;object-fit:cover"></video>
-  <div id="scanner-status" style="color:#fff;font-size:14px;margin-top:16px;padding:0 24px;text-align:center"></div>
-  <button onclick="closeScanner()" style="margin-top:20px;padding:12px 32px;background:#fff;border:none;border-radius:24px;font-size:15px;font-weight:700;cursor:pointer">Cancel</button>
+<!-- Barcode Scanner Modal -->
+<div id="scanner-overlay" style="display:none;position:fixed;inset:0;background:#000;z-index:200;flex-direction:column;align-items:center;justify-content:flex-start;">
+  <div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:max(16px,env(safe-area-inset-top,16px)) 16px 12px;background:#000;">
+    <span style="color:#fff;font-size:17px;font-weight:700;">Scan Barcode</span>
+    <button onclick="closeScanner()" style="background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+  </div>
+  <div style="position:relative;width:100%;flex:1;overflow:hidden;">
+    <video id="scanner-video" style="width:100%;height:100%;object-fit:cover;" playsinline muted></video>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+      <div style="width:260px;height:160px;border:3px solid rgba(255,255,255,0.8);border-radius:12px;box-shadow:0 0 0 2000px rgba(0,0,0,0.45);"></div>
+    </div>
+    <div id="scanner-status" style="position:absolute;bottom:40px;left:0;right:0;text-align:center;color:#fff;font-size:14px;text-shadow:0 1px 3px rgba(0,0,0,0.8);">Point camera at barcode</div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -717,52 +726,37 @@ let scannerCodeReader = null;
 function openScanner() {
   const overlay = document.getElementById('scanner-overlay');
   overlay.style.display = 'flex';
-  const status = document.getElementById('scanner-status');
-  status.textContent = 'Requesting camera…';
+  document.getElementById('scanner-status').textContent = 'Starting camera…';
 
-  // Use native BarcodeDetector if available (Chrome/Android), else ZXing
-  if ('BarcodeDetector' in window) {
-    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(stream => {
-      const video = document.getElementById('scanner-video');
-      video.srcObject = stream;
-      video.play();
-      status.textContent = 'Point camera at barcode';
-      const detector = new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']});
-      const scan = setInterval(async () => {
-        if(!document.getElementById('scanner-overlay') || document.getElementById('scanner-overlay').style.display==='none'){clearInterval(scan);stream.getTracks().forEach(t=>t.stop());return;}
-        try{const codes=await detector.detect(video);if(codes.length){clearInterval(scan);stream.getTracks().forEach(t=>t.stop());closeScanner();lookupBarcode(codes[0].rawValue);}}catch(e){}
-      }, 300);
-      overlay._scanInterval = scan;
-      overlay._stream = stream;
-    }).catch(err => { status.textContent = 'Camera error: ' + err.message; });
-    return;
+  try {
+    const ZXing = window.ZXing;
+    scannerCodeReader = new ZXing.BrowserMultiFormatReader();
+    scannerCodeReader.listVideoInputDevices().then(devices => {
+      // prefer back camera
+      const back = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1];
+      const deviceId = back ? back.deviceId : undefined;
+      document.getElementById('scanner-status').textContent = 'Point camera at barcode';
+      scannerCodeReader.decodeFromVideoDevice(deviceId, 'scanner-video', (result, err) => {
+        if (result) {
+          const barcode = result.getText();
+          closeScanner();
+          lookupBarcode(barcode);
+        }
+      });
+    }).catch(err => {
+      document.getElementById('scanner-status').textContent = 'Camera not available';
+    });
+  } catch(e) {
+    document.getElementById('scanner-status').textContent = 'Scanner unavailable';
   }
-
-  // ZXing fallback
-  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(stream => {
-    const video = document.getElementById('scanner-video');
-    video.srcObject = stream;
-    video.play();
-    status.textContent = 'Point camera at barcode';
-    try {
-      const ZXing = window.ZXing;
-      if (!ZXing) { status.textContent = 'Scanner library not loaded'; return; }
-      scannerCodeReader = new ZXing.BrowserMultiFormatReader();
-      scannerCodeReader.decodeFromVideoElement(video).then(result => {
-        if (result) { stream.getTracks().forEach(t=>t.stop()); closeScanner(); lookupBarcode(result.getText()); }
-      }).catch(err => { status.textContent = 'Scan error: ' + (err.message||err); });
-    } catch(e) { status.textContent = 'Scanner error: ' + e.message; }
-  }).catch(err => { status.textContent = 'Camera denied: ' + err.message; });
 }
 
 function closeScanner() {
-  const overlay = document.getElementById('scanner-overlay');
-  if (overlay._scanInterval) { clearInterval(overlay._scanInterval); overlay._scanInterval = null; }
-  if (overlay._stream) { overlay._stream.getTracks().forEach(t=>t.stop()); overlay._stream = null; }
-  if (scannerCodeReader) { try { scannerCodeReader.reset(); } catch(e) {} scannerCodeReader = null; }
-  const video = document.getElementById('scanner-video');
-  if (video) { video.srcObject = null; }
-  overlay.style.display = 'none';
+  if (scannerCodeReader) {
+    try { scannerCodeReader.reset(); } catch(e) {}
+    scannerCodeReader = null;
+  }
+  document.getElementById('scanner-overlay').style.display = 'none';
 }
 
 async function lookupBarcode(barcode) {
