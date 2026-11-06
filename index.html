@@ -807,9 +807,7 @@ async function lookupBarcode(barcode) {
       return;
     }
     const servingSize = p.serving_size || '';
-    showToast('serving_size: ' + (servingSize||'none') + ' | serving_quantity: ' + (p.serving_quantity||'none'));
-    const servingQtyMatch = servingSize.match(/([\d.]+)/);
-    const servingQtyG = servingQtyMatch ? parseFloat(servingQtyMatch[1]) : 0;
+    const servingQtyG = parseFloat(p.serving_quantity) || 0;
     pendingFood = { name, brand, kcalPer100: kcal, carbsPer100: carbs, proteinPer100: protein, fatPer100: fat, fiber, sugar, sodium, servingSize, servingQtyG };
     switchTab('search');
     showAddSheetFromPending();
