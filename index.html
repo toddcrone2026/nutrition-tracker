@@ -717,37 +717,52 @@ let scannerCodeReader = null;
 function openScanner() {
   const overlay = document.getElementById('scanner-overlay');
   overlay.style.display = 'flex';
-  document.getElementById('scanner-status').textContent = 'Starting camera…';
+  const status = document.getElementById('scanner-status');
+  status.textContent = 'Requesting camera…';
 
-  try {
-    const ZXing = window.ZXing;
-    scannerCodeReader = new ZXing.BrowserMultiFormatReader();
-    scannerCodeReader.listVideoInputDevices().then(devices => {
-      // prefer back camera
-      const back = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1];
-      const deviceId = back ? back.deviceId : undefined;
-      document.getElementById('scanner-status').textContent = 'Point camera at barcode';
-      scannerCodeReader.decodeFromVideoDevice(deviceId, 'scanner-video', (result, err) => {
-        if (result) {
-          const barcode = result.getText();
-          closeScanner();
-          lookupBarcode(barcode);
-        }
-      });
-    }).catch(err => {
-      document.getElementById('scanner-status').textContent = 'Camera not available';
-    });
-  } catch(e) {
-    document.getElementById('scanner-status').textContent = 'Scanner unavailable';
+  // Use native BarcodeDetector if available (Chrome/Android), else ZXing
+  if ('BarcodeDetector' in window) {
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(stream => {
+      const video = document.getElementById('scanner-video');
+      video.srcObject = stream;
+      video.play();
+      status.textContent = 'Point camera at barcode';
+      const detector = new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']});
+      const scan = setInterval(async () => {
+        if(!document.getElementById('scanner-overlay') || document.getElementById('scanner-overlay').style.display==='none'){clearInterval(scan);stream.getTracks().forEach(t=>t.stop());return;}
+        try{const codes=await detector.detect(video);if(codes.length){clearInterval(scan);stream.getTracks().forEach(t=>t.stop());closeScanner();lookupBarcode(codes[0].rawValue);}}catch(e){}
+      }, 300);
+      overlay._scanInterval = scan;
+      overlay._stream = stream;
+    }).catch(err => { status.textContent = 'Camera error: ' + err.message; });
+    return;
   }
+
+  // ZXing fallback
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(stream => {
+    const video = document.getElementById('scanner-video');
+    video.srcObject = stream;
+    video.play();
+    status.textContent = 'Point camera at barcode';
+    try {
+      const ZXing = window.ZXing;
+      if (!ZXing) { status.textContent = 'Scanner library not loaded'; return; }
+      scannerCodeReader = new ZXing.BrowserMultiFormatReader();
+      scannerCodeReader.decodeFromVideoElement(video).then(result => {
+        if (result) { stream.getTracks().forEach(t=>t.stop()); closeScanner(); lookupBarcode(result.getText()); }
+      }).catch(err => { status.textContent = 'Scan error: ' + (err.message||err); });
+    } catch(e) { status.textContent = 'Scanner error: ' + e.message; }
+  }).catch(err => { status.textContent = 'Camera denied: ' + err.message; });
 }
 
 function closeScanner() {
-  if (scannerCodeReader) {
-    try { scannerCodeReader.reset(); } catch(e) {}
-    scannerCodeReader = null;
-  }
-  document.getElementById('scanner-overlay').style.display = 'none';
+  const overlay = document.getElementById('scanner-overlay');
+  if (overlay._scanInterval) { clearInterval(overlay._scanInterval); overlay._scanInterval = null; }
+  if (overlay._stream) { overlay._stream.getTracks().forEach(t=>t.stop()); overlay._stream = null; }
+  if (scannerCodeReader) { try { scannerCodeReader.reset(); } catch(e) {} scannerCodeReader = null; }
+  const video = document.getElementById('scanner-video');
+  if (video) { video.srcObject = null; }
+  overlay.style.display = 'none';
 }
 
 async function lookupBarcode(barcode) {
