@@ -255,29 +255,6 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 <div class="overlay" id="settings-overlay" onclick="closeSettings(event)">
   <div class="sheet" id="settings-body"></div>
 </div>
-<div class="overlay" id="ai-overlay" onclick="closeAIOverlay(event)" style="display:none">
-  <div class="sheet" style="max-height:80vh;overflow-y:auto">
-    <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 0">
-      <div style="font-size:17px;font-weight:800;color:var(--text);flex:1" id="ai-modal-title">🤖 AI Nutrition Coach</div>
-      <button onclick="closeAIOverlay()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2)">✕</button>
-    </div>
-    <div id="ai-modal-body" style="padding:12px 16px 24px"></div>
-  </div>
-</div>
-<!-- Barcode Scanner Modal -->
-<div id="scanner-overlay" style="display:none;position:fixed;inset:0;background:#000;z-index:200;flex-direction:column;align-items:center;justify-content:flex-start;">
-  <div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:max(16px,env(safe-area-inset-top,16px)) 16px 12px;background:#000;">
-    <span style="color:#fff;font-size:17px;font-weight:700;">Scan Barcode</span>
-    <button onclick="closeScanner()" style="background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
-  </div>
-  <div style="position:relative;width:100%;flex:1;overflow:hidden;">
-    <video id="scanner-video" style="width:100%;height:100%;object-fit:cover;" playsinline muted></video>
-    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
-      <div style="width:260px;height:160px;border:3px solid rgba(255,255,255,0.8);border-radius:12px;box-shadow:0 0 0 2000px rgba(0,0,0,0.45);"></div>
-    </div>
-    <div id="scanner-status" style="position:absolute;bottom:40px;left:0;right:0;text-align:center;color:#fff;font-size:14px;text-shadow:0 1px 3px rgba(0,0,0,0.8);">Point camera at barcode</div>
-  </div>
-</div>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
@@ -533,7 +510,6 @@ function renderLogTab(){
     html+=`</div>`;
   });
   if(totalLogged===0)html+=`<div class="empty"><div class="empty-icon">🥗</div><div class="empty-msg">Tap "+ Add" to log your first meal</div><div class="empty-sub">Search foods and track your macros</div></div>`;
-  html+=`<button onclick="openAINutrition()" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),#ab47bc);border:none;border-radius:var(--radius);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;">🤖 Get AI Nutrition Feedback</button>`;
   c.innerHTML=html;
 }
 function goSearch(meal){pendingMeal=meal;switchTab('search')}
@@ -649,12 +625,10 @@ function openAddSheet(idx){
 }
 function showAddSheetFromPending(){
   const f=pendingFood;
-
   const fav=isFavorite(f.name);
   const brandHtml=f.brand?`<div class="sheet-sub">${f.brand}</div>`:'';
   const mealOpts=MEAL_TYPES.map(m=>`<option value="${m}" ${m===pendingMeal?'selected':''}>${m}</option>`).join('');
-  document.getElementById('add-sheet-body').innerHTML=`<div class="sheet-handle"></div><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:${f.brand?4:12}px"><div class="sheet-title" style="margin:0">${f.name}</div><button onclick="toggleFavFromSheet()" style="background:none;border:none;font-size:22px;cursor:pointer;padding:0;line-height:1;flex-shrink:0">${fav?'⭐':'☆'}</button></div>${brandHtml}${(()=>{const _s=(f.servingQtyG||100)/100;return `<div class="nf-grid"><div class="nf-cell"><div class="nf-val nf-cal" id="sh-kcal">${Math.round((f.kcalPer100||0)*_s)}</div><div class="nf-name">kcal</div></div><div class="nf-cell"><div class="nf-val nf-carb" id="sh-carb">${Math.round((f.carbsPer100||0)*_s)}g</div><div class="nf-name">Carbs</div></div><div class="nf-cell"><div class="nf-val nf-prot" id="sh-prot">${Math.round((f.proteinPer100||0)*_s)}g</div><div class="nf-name">Protein</div></div><div class="nf-cell"><div class="nf-val nf-fat" id="sh-fat">${Math.round((f.fatPer100||0)*_s)}g</div><div class="nf-name">Fat</div></div></div>`;})()}<div class="nf-extra">Fiber ${Math.round(f.fiber||0)}g &nbsp;·&nbsp; Sugar ${Math.round(f.sugar||0)}g &nbsp;·&nbsp; Sodium ${Math.round(f.sodium||0)}mg</div><div class="srv-row"><div class="form-group"><label class="form-label">Amount${f.servingSize?` <span style="font-weight:400;color:var(--text3)">(serving: ${f.servingSize})</span>`:''}</label><input class="form-input" id="sh-qty" type="number" value="${f.servingQtyG||100}" min="1" step="1" oninput="updateSheetNutrients()" inputmode="decimal"></div><div class="form-group"><label class="form-label">Unit</label><select class="form-input" id="sh-unit" onchange="updateSheetNutrients()"><option value="grams" data-grams="1">grams</option><option value="oz" data-grams="28.35">oz</option><option value="serving" data-grams="100">serving</option></select></div></div><div class="form-group"><label class="form-label">Meal</label><select class="form-input" id="sh-meal">${mealOpts}</select></div><button class="btn btn-primary" onclick="addToLog()">Add to Log</button>`;
-  updateSheetNutrients();
+  document.getElementById('add-sheet-body').innerHTML=`<div class="sheet-handle"></div><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:${f.brand?4:12}px"><div class="sheet-title" style="margin:0">${f.name}</div><button onclick="toggleFavFromSheet()" style="background:none;border:none;font-size:22px;cursor:pointer;padding:0;line-height:1;flex-shrink:0">${fav?'⭐':'☆'}</button></div>${brandHtml}<div class="nf-grid"><div class="nf-cell"><div class="nf-val nf-cal" id="sh-kcal">${Math.round(f.kcalPer100)}</div><div class="nf-name">kcal</div></div><div class="nf-cell"><div class="nf-val nf-carb" id="sh-carb">${Math.round(f.carbsPer100)}g</div><div class="nf-name">Carbs</div></div><div class="nf-cell"><div class="nf-val nf-prot" id="sh-prot">${Math.round(f.proteinPer100)}g</div><div class="nf-name">Protein</div></div><div class="nf-cell"><div class="nf-val nf-fat" id="sh-fat">${Math.round(f.fatPer100)}g</div><div class="nf-name">Fat</div></div></div><div class="nf-extra">Fiber ${Math.round(f.fiber||0)}g &nbsp;·&nbsp; Sugar ${Math.round(f.sugar||0)}g &nbsp;·&nbsp; Sodium ${Math.round(f.sodium||0)}mg</div><div class="srv-row"><div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="sh-qty" type="number" value="100" min="1" step="1" oninput="updateSheetNutrients()" inputmode="decimal"></div><div class="form-group"><label class="form-label">Unit</label><select class="form-input" id="sh-unit" onchange="updateSheetNutrients()"><option value="grams" data-grams="1">grams</option><option value="oz" data-grams="28.35">oz</option><option value="serving" data-grams="100">serving</option></select></div></div><div class="form-group"><label class="form-label">Meal</label><select class="form-input" id="sh-meal">${mealOpts}</select></div><button class="btn btn-primary" onclick="addToLog()">Add to Log</button>`;
   document.getElementById('add-sheet-overlay').classList.add('open');
 }
 function updateSheetNutrients(){const qty=parseFloat(document.getElementById('sh-qty')?.value)||1,unitEl=document.getElementById('sh-unit'),grams=parseFloat(unitEl?.selectedOptions[0]?.dataset.grams||100),scale=(qty*grams)/100;document.getElementById('sh-kcal').textContent=Math.round((pendingFood.kcalPer100||0)*scale);document.getElementById('sh-carb').textContent=Math.round((pendingFood.carbsPer100||0)*scale)+'g';document.getElementById('sh-prot').textContent=Math.round((pendingFood.proteinPer100||0)*scale)+'g';document.getElementById('sh-fat').textContent=Math.round((pendingFood.fatPer100||0)*scale)+'g'}
@@ -728,58 +702,37 @@ let scannerCodeReader = null;
 function openScanner() {
   const overlay = document.getElementById('scanner-overlay');
   overlay.style.display = 'flex';
-  const status = document.getElementById('scanner-status');
-  status.textContent = 'Starting camera…';
+  document.getElementById('scanner-status').textContent = 'Starting camera…';
 
-  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}})
-    .then(stream => {
-      const video = document.getElementById('scanner-video');
-      video.srcObject = stream;
-      overlay._stream = stream;
-      video.play().catch(()=>{});
-      status.textContent = 'Point camera at barcode';
-
-      // Poll with ZXing on a canvas — more reliable on iOS than decodeFromVideoDevice
-      const ZXing = window.ZXing;
-      if (!ZXing) { status.textContent = 'Scanner library not loaded'; return; }
-      const reader = new ZXing.BrowserMultiFormatReader();
-      scannerCodeReader = reader;
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-
-      overlay._scanLoop = setInterval(() => {
-        if (video.readyState < 2) return;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        canvas.toBlob(blob => {
-          if (!blob) return;
-          const img = new Image();
-          img.onload = () => {
-            reader.decodeFromImage(img).then(result => {
-              if (result) {
-                closeScanner();
-                lookupBarcode(result.getText());
-              }
-            }).catch(() => {});
-          };
-          img.src = URL.createObjectURL(blob);
-        }, 'image/jpeg', 0.8);
-      }, 500);
-    })
-    .catch(err => {
-      status.textContent = 'Camera denied — check Safari settings';
+  try {
+    const ZXing = window.ZXing;
+    scannerCodeReader = new ZXing.BrowserMultiFormatReader();
+    scannerCodeReader.listVideoInputDevices().then(devices => {
+      // prefer back camera
+      const back = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1];
+      const deviceId = back ? back.deviceId : undefined;
+      document.getElementById('scanner-status').textContent = 'Point camera at barcode';
+      scannerCodeReader.decodeFromVideoDevice(deviceId, 'scanner-video', (result, err) => {
+        if (result) {
+          const barcode = result.getText();
+          closeScanner();
+          lookupBarcode(barcode);
+        }
+      });
+    }).catch(err => {
+      document.getElementById('scanner-status').textContent = 'Camera not available';
     });
+  } catch(e) {
+    document.getElementById('scanner-status').textContent = 'Scanner unavailable';
+  }
 }
 
 function closeScanner() {
-  const overlay = document.getElementById('scanner-overlay');
-  if (overlay._scanLoop) { clearInterval(overlay._scanLoop); overlay._scanLoop = null; }
-  if (overlay._stream) { overlay._stream.getTracks().forEach(t => t.stop()); overlay._stream = null; }
-  if (scannerCodeReader) { try { scannerCodeReader.reset(); } catch(e) {} scannerCodeReader = null; }
-  const video = document.getElementById('scanner-video');
-  if (video) video.srcObject = null;
-  overlay.style.display = 'none';
+  if (scannerCodeReader) {
+    try { scannerCodeReader.reset(); } catch(e) {}
+    scannerCodeReader = null;
+  }
+  document.getElementById('scanner-overlay').style.display = 'none';
 }
 
 async function lookupBarcode(barcode) {
@@ -802,147 +755,17 @@ async function lookupBarcode(barcode) {
     const fiber = parseFloat(n['fiber_100g'] || 0);
     const sugar = parseFloat(n['sugars_100g'] || 0);
     const sodium = parseFloat(n['sodium_100g'] || 0);
-    // Try to get serving size in grams from product data
     if (!kcal && !carbs && !protein && !fat) {
       showToast('No nutrition data for this product');
       return;
     }
-    const servingSize = p.serving_size || '';
-    const servingQtyG = parseFloat(p.serving_quantity) || 0;
-    pendingFood = { name, brand, kcalPer100: kcal, carbsPer100: carbs, proteinPer100: protein, fatPer100: fat, fiber, sugar, sodium, servingSize, servingQtyG };
+    pendingFood = { name, brand, kcalPer100: kcal, carbsPer100: carbs, proteinPer100: protein, fatPer100: fat, fiber, sugar, sodium };
     switchTab('search');
     showAddSheetFromPending();
   } catch(e) {
     showToast('Lookup failed — check connection');
   }
 }
-
-// ── AI Nutrition Coach ───────────────────────────────────────────────────
-function getNutritionAIKey(){return localStorage.getItem('nt_anthropic_key')||atob('c2stYW50LXVzci0xSDk4amZaWjEtTTRkWEZobjNGRUR5NTNvOXMyajluRWtCbzVrZVlRZi16S19VUFkxbThHb09TZ2dfWmRFOEVyZkozUHc3ZWNZUVFieVVCMFFUdkxLR1FTUl9KZ1FBQQ==');}
-
-async function callNutritionClaude(prompt,maxTok=500){
-  const key=getNutritionAIKey();
-  if(!key){showAINutritionModal('API Key Missing','<p style="color:var(--text2);font-size:14px;">No API key configured.</p>');return null;}
-  try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTok,messages:[{role:'user',content:prompt}]})});
-    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||res.statusText);}
-    const data=await res.json();return data.content[0].text;
-  }catch(e){showAINutritionModal('Error',`<p style="color:var(--danger);font-size:14px;">${e.message}</p>`);return null;}
-}
-
-function renderMd(md){
-  return md
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/^### (.+)$/gm,'<h4 style="margin:12px 0 4px;font-size:14px;font-weight:700;color:var(--text)">$1</h4>')
-    .replace(/^## (.+)$/gm,'<h3 style="margin:14px 0 6px;font-size:15px;font-weight:800;color:var(--text)">$1</h3>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/^- (.+)$/gm,'<li style="margin:3px 0;padding-left:4px">$1</li>')
-    .replace(/(<li[^>]*>[\s\S]*?<\/li>)+/g,s=>`<ul style="margin:6px 0 6px 16px;padding:0;list-style:disc">${s}<\/ul>`)
-    .replace(/\n\n/g,'<\/p><p style="margin:8px 0">')
-    .replace(/^(?!<[hul])(.+)$/gm,(m,p1)=>p1.trim()?`<p style="margin:6px 0">${p1}</p>`:m);
-}
-
-function showAINutritionModal(title,bodyHtml){
-  document.getElementById('ai-modal-title').textContent=title;
-  document.getElementById('ai-modal-body').innerHTML=bodyHtml;
-  const ov=document.getElementById('ai-overlay');
-  ov.style.display='flex';
-  requestAnimationFrame(()=>ov.classList.add('open'));
-}
-
-function closeAIOverlay(e){
-  if(!e||e.target===document.getElementById('ai-overlay')){
-    const ov=document.getElementById('ai-overlay');
-    ov.classList.remove('open');
-    setTimeout(()=>{ov.style.display='none';},300);
-  }
-}
-
-async function openAINutrition(){
-  showAINutritionModal('🤖 AI Nutrition Coach','<div style="text-align:center;padding:32px 0"><div class="spinner" style="width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto"></div><div style="color:var(--text2);font-size:13px;margin-top:12px">Analyzing your nutrition…</div></div>');
-  const targets=calcTargets(profile||{},getTodayLoad());
-  const totals=calcTotals(foodLog);
-  const pctKcal=targets.kcal>0?Math.round(totals.kcal/targets.kcal*100):0;
-  const pctCarb=targets.carbs>0?Math.round(totals.carbs/targets.carbs*100):0;
-  const pctProt=targets.protein>0?Math.round(totals.protein/targets.protein*100):0;
-  const pctFat=targets.fat>0?Math.round(totals.fat/targets.fat*100):0;
-  const meals=foodLog.reduce((acc,e)=>{(acc[e.meal]=acc[e.meal]||[]).push(e.name);return acc;},{});
-  const mealSummary=Object.entries(meals).map(([m,foods])=>`${m}: ${foods.join(', ')}`).join(' | ');
-  const goalLabels={performance:'athletic performance',maintain:'maintain weight',lose:'lose weight',gain:'gain muscle'};
-  const loadLabels={rest:'rest day',easy:'easy training',hard:'hard training',long:'long run'};
-  const p=profile||{};
-
-  const prompt=`You are a sports nutrition coach. Give brief, personalized feedback (3-5 sentences) on today's nutrition.
-
-Athlete: ${p.name||'User'}, goal: ${goalLabels[p.goal]||p.goal||'general health'}, today: ${loadLabels[p.trainingLoad]||p.trainingLoad||'unknown'} day
-Daily targets: ${targets.kcal} kcal | ${targets.carbs}g carbs | ${targets.protein}g protein | ${targets.fat}g fat
-Today logged: ${totals.kcal} kcal (${pctKcal}%) | ${totals.carbs}g carbs (${pctCarb}%) | ${totals.protein}g protein (${pctProt}%) | ${totals.fat}g fat (${pctFat}%)
-Foods eaten: ${mealSummary||'Nothing logged yet'}
-
-Give honest, actionable feedback. Note what's on track and what needs attention. Keep it conversational and practical. Use markdown formatting.`;
-
-  const reply=await callNutritionClaude(prompt,500);
-  if(reply){
-    showAINutritionModal('🤖 AI Nutrition Coach',`
-      <div style="font-size:14px;line-height:1.75;color:var(--text);padding:4px 0 8px">${renderMd(reply)}</div>
-      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="getMealSuggestions()" style="flex:1;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:13px;cursor:pointer">🍽️ Meal Ideas</button>
-        <button onclick="getProteinTips()" style="flex:1;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:13px;cursor:pointer">💪 Protein Tips</button>
-      </div>
-      <button onclick="openAINutrition()" style="width:100%;margin-top:8px;padding:10px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--text3);font-size:12px;cursor:pointer">↺ Refresh analysis</button>
-    `);
-  }
-}
-
-async function getMealSuggestions(){
-  showAINutritionModal('🍽️ Meal Ideas','<div style="text-align:center;padding:32px 0"><div class="spinner" style="width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto"></div><div style="color:var(--text2);font-size:13px;margin-top:12px">Finding meal ideas…</div></div>');
-  const targets=calcTargets(profile||{},getTodayLoad());
-  const totals=calcTotals(foodLog);
-  const remaining={kcal:Math.max(0,targets.kcal-totals.kcal),carbs:Math.max(0,targets.carbs-totals.carbs),protein:Math.max(0,targets.protein-totals.protein),fat:Math.max(0,targets.fat-totals.fat)};
-  const p=profile||{};
-  const goalLabels={performance:'athletic performance',maintain:'maintain weight',lose:'lose weight',gain:'gain muscle'};
-  const loadLabels={rest:'rest day',easy:'easy training',hard:'hard training',long:'long run'};
-
-  const prompt=`Suggest 3 specific meal or snack ideas to hit remaining nutrition targets for the day.
-
-Goal: ${goalLabels[p.goal]||'general health'}, Today: ${loadLabels[p.trainingLoad]||'unknown'} day
-Remaining today: ~${remaining.kcal} kcal, ${remaining.carbs}g carbs, ${remaining.protein}g protein, ${remaining.fat}g fat
-
-List 3 practical, specific meal/snack suggestions with approximate macros. Use markdown with **bold** for food names. Keep each suggestion to 1-2 lines.`;
-
-  const reply=await callNutritionClaude(prompt,400);
-  if(reply){
-    showAINutritionModal('🍽️ Meal Ideas',`
-      <div style="font-size:14px;line-height:1.75;color:var(--text);padding:4px 0 8px">${renderMd(reply)}</div>
-      <button onclick="openAINutrition()" style="width:100%;margin-top:16px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:13px;cursor:pointer">← Back</button>
-    `);
-  }
-}
-
-async function getProteinTips(){
-  showAINutritionModal('💪 Protein Tips','<div style="text-align:center;padding:32px 0"><div class="spinner" style="width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto"></div><div style="color:var(--text2);font-size:13px;margin-top:12px">Getting protein tips…</div></div>');
-  const targets=calcTargets(profile||{},getTodayLoad());
-  const totals=calcTotals(foodLog);
-  const p=profile||{};
-  const goalLabels={performance:'athletic performance',maintain:'maintain weight',lose:'lose weight',gain:'gain muscle'};
-
-  const prompt=`Give practical protein timing and food tips for this athlete.
-
-Goal: ${goalLabels[p.goal]||'general health'}, Weight: ${p.weightLbs||'unknown'} lbs
-Protein target: ${targets.protein}g/day, Logged today: ${totals.protein}g
-
-Give 3-4 specific, actionable tips for hitting protein targets. Include timing advice and best food sources for their goal. Use markdown formatting.`;
-
-  const reply=await callNutritionClaude(prompt,400);
-  if(reply){
-    showAINutritionModal('💪 Protein Tips',`
-      <div style="font-size:14px;line-height:1.75;color:var(--text);padding:4px 0 8px">${renderMd(reply)}</div>
-      <button onclick="openAINutrition()" style="width:100%;margin-top:16px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:13px;cursor:pointer">← Back</button>
-    `);
-  }
-}
-
 </script>
 
 <!-- Barcode Scanner Modal -->
