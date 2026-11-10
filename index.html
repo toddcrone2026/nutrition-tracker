@@ -785,17 +785,58 @@ function renderHydrationTab(){
   const maxHr=Math.max(8,...Object.values(hours));
   const chartHTML=hourKeys.map(h=>{
     const oz=hours[h]||0,label=h>12?(h-12)+'p':h===12?'12p':h+'a';
-    return '<div class="hydration-chart-bar-row"><div class="hydration-chart-label">'+label+'</div><div class="hydration-chart-bar-track"><div class="hydration-chart-bar-fill" style="width:'+(oz?Math.round(oz/maxHr*100):0)+'%"></div></div><div class="hydration-chart-val">'+(oz?(hydrationUnit==='oz'?oz.toFixed(0)+'oz':ozToMl(oz)+'ml'):'' )+'</div></div>';
+    const fillPct=oz?Math.round(oz/maxHr*100):0;
+    const valStr=oz?(hydrationUnit==='oz'?oz.toFixed(0)+'oz':ozToMl(oz)+'ml'):'';
+    return `<div class="hydration-chart-bar-row"><div class="hydration-chart-label">${label}</div><div class="hydration-chart-bar-track"><div class="hydration-chart-bar-fill" style="width:${fillPct}%"></div></div><div class="hydration-chart-val">${valStr}</div></div>`;
   }).join('');
-  const logHTML=hydrationLog.length?'<div class="card"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:10px">Log</div>'+[...hydrationLog].reverse().map((e,ri)=>{const i=hydrationLog.length-1-ri;return'<div class="hydration-log-item"><div><span style="font-size:14px;font-weight:600">'+(hydrationUnit==='oz'?e.oz+' oz':ozToMl(e.oz)+' ml')+'</span> <span style="font-size:12px;color:var(--text2)">at '+e.time+'</span></div><button onclick="removeWater('+i+')" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 4px">×</button></div>';}).join('')+'</div>':'';
-  el.innerHTML='<div class="section-title" style="margin-bottom:12px">Hydration</div>'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div class="water-unit-toggle"><button class="water-unit-btn '+(hydrationUnit==='oz'?'active':'')+'" onclick="setHydrationUnit('oz')">oz</button><button class="water-unit-btn '+(hydrationUnit==='ml'?'active':'')+'" onclick="setHydrationUnit('ml')">ml</button></div><div style="font-size:13px;color:var(--text2)">Goal: '+displayGoal+'/day</div></div>'
-    +'<div style="display:flex;justify-content:center;margin-bottom:20px"><div style="position:relative;width:180px;height:180px;display:flex;align-items:center;justify-content:center;"><svg width="180" height="180" style="position:absolute;top:0;left:0;transform:rotate(-90deg)"><circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="var(--surface2)" stroke-width="'+sw+'"/><circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+arcColor+'" stroke-width="'+sw+'" stroke-dasharray="'+dash+' '+gap+'" stroke-linecap="round"/></svg><div style="position:relative;text-align:center;"><div style="font-size:30px;font-weight:800;color:var(--text1)">'+Math.round(pct*100)+'%</div><div style="font-size:13px;color:var(--text2)">'+displayTotal+'</div><div style="font-size:11px;color:'+(pct>=1?'#22c55e':'var(--text3)')+'">'+( pct>=1?'✓ Goal met!':'of '+displayGoal)+'</div></div></div></div>'
-    +'<div class="card" style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:10px">Quick Add</div><div class="water-quick-btns">'+quickOz.map(oz=>'<button class="water-quick-btn" onclick="logWater('+oz+')">+'+(hydrationUnit==='oz'?oz+'oz':ozToMl(oz)+'ml')+'</button>').join('')+'</div><div class="water-custom-row"><input id="water-custom-input" type="number" placeholder="'+(hydrationUnit==='oz'?'Custom oz':'Custom ml')+'" min="1"><button class="btn btn-primary" style="white-space:nowrap" onclick="logCustomWater()">Add</button></div></div>'
-    +'<div class="card" style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:10px">Today by Hour</div>'+chartHTML+'</div>'
-    +logHTML;
+  const logItems=[...hydrationLog].reverse().map((e,ri)=>{
+    const i=hydrationLog.length-1-ri;
+    const valStr=hydrationUnit==='oz'?e.oz+' oz':ozToMl(e.oz)+' ml';
+    return `<div class="hydration-log-item"><div><span style="font-size:14px;font-weight:600">${valStr}</span> <span style="font-size:12px;color:var(--text2)">at ${e.time}</span></div><button onclick="removeWater(${i})" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 4px">×</button></div>`;
+  }).join('');
+  const logHTML=hydrationLog.length?`<div class="card"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:10px">Log</div>${logItems}</div>`:'';
+  const ozActive=hydrationUnit==='oz'?'active':'';
+  const mlActive=hydrationUnit==='ml'?'active':'';
+  const quickBtns=quickOz.map(oz=>{const lbl=hydrationUnit==='oz'?oz+'oz':ozToMl(oz)+'ml';return `<button class="water-quick-btn" onclick="logWater(${oz})">+${lbl}</button>`;}).join('');
+  el.innerHTML=`
+    <div class="section-title" style="margin-bottom:12px">Hydration</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="water-unit-toggle">
+        <button class="water-unit-btn ${ozActive}" onclick="setHydrationUnit('oz')">oz</button>
+        <button class="water-unit-btn ${mlActive}" onclick="setHydrationUnit('ml')">ml</button>
+      </div>
+      <div style="font-size:13px;color:var(--text2)">Goal: ${displayGoal}/day</div>
+    </div>
+    <div style="display:flex;justify-content:center;margin-bottom:20px">
+      <div style="position:relative;width:180px;height:180px;display:flex;align-items:center;justify-content:center;">
+        <svg width="180" height="180" style="position:absolute;top:0;left:0;transform:rotate(-90deg)">
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${sw}"/>
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${arcColor}" stroke-width="${sw}" stroke-dasharray="${dash} ${gap}" stroke-linecap="round"/>
+        </svg>
+        <div style="position:relative;text-align:center;">
+          <div style="font-size:30px;font-weight:800;color:var(--text1)">${Math.round(pct*100)}%</div>
+          <div style="font-size:13px;color:var(--text2)">${displayTotal}</div>
+          <div style="font-size:11px;color:${pct>=1?'#22c55e':'var(--text3)'}">
+            ${pct>=1?'✓ Goal met!':'of '+displayGoal}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:10px">Quick Add</div>
+      <div class="water-quick-btns">${quickBtns}</div>
+      <div class="water-custom-row">
+        <input id="water-custom-input" type="number" placeholder="${hydrationUnit==='oz'?'Custom oz':'Custom ml'}" min="1">
+        <button class="btn btn-primary" style="white-space:nowrap" onclick="logCustomWater()">Add</button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:10px">Today by Hour</div>
+      ${chartHTML}
+    </div>
+    ${logHTML}
+  `;
 }
-
 function renderGoalSubOptions(){
   const el=document.getElementById('goal-sub-options');
   if(!el)return;
