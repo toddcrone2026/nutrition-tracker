@@ -49,8 +49,10 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .pie-cal-num{font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 .pie-cal-label{font-size:10px;color:var(--text2);font-variant-numeric:tabular-nums}
 .pie-cal-unit{font-size:9px;color:var(--text3)}
-.macro-rings-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.macro-rings-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
 .macro-ring-tile{background:var(--surface2);border-radius:12px;padding:10px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.macro-ring-tile.water-tile{cursor:pointer;border:1.5px solid rgba(14,165,233,0.2);}
+.macro-ring-tile.water-tile:active{opacity:.7}
 .macro-ring-tile.over .tile-val{color:var(--danger)}
 .macro-ring-tile.warn .tile-val{color:var(--warn)}
 .tile-name{font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
@@ -64,6 +66,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .mring-fill.carbs{stroke:#f5a623}
 .mring-fill.protein{stroke:#27ae60}
 .mring-fill.fat{stroke:#e53935}
+.mring-fill.water{stroke:#0ea5e9}
 .mring-fill.over{stroke:var(--danger)}
 .mring-fill.warn{stroke:var(--warn)}
 .tile-name{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)}
@@ -264,9 +267,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
     <button class="nav-btn" data-tab="summary" onclick="switchTab('summary')">
       <span class="nav-icon">📊</span><span class="nav-label">Summary</span>
     </button>
-    <button class="nav-btn" data-tab="hydration" onclick="switchTab('hydration')">
-      <span class="nav-icon">💧</span><span class="nav-label">Water</span>
-    </button>
+
   </nav>
 </div>
 
@@ -461,6 +462,13 @@ function renderMacroBar(){
         const s=st(m.val,m.target);
         return `<div class="macro-ring-tile ${s}">${ringHtml(pct,m.cls)}<div class="tile-name">${m.label}</div><div class="tile-val">${m.val}<span class="tile-unit">/${m.target}${m.unit}</span></div></div>`;
       }).join('')}
+      ${(()=>{
+        const totalOz=hydrationLog.reduce((s,e)=>s+e.oz,0);
+        const pct=Math.min(1,totalOz/WATER_GOAL_OZ);
+        const r=16,circ=2*Math.PI*r,dash=(circ*pct).toFixed(2),offset=(circ*(1-pct)).toFixed(2);
+        const ringEl=`<div class="mring"><svg width="44" height="44" viewBox="0 0 44 44"><circle class="mring-bg" cx="22" cy="22" r="${r}"/><circle class="mring-fill water" cx="22" cy="22" r="${r}" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${offset}"/></svg><span class="mring-pct" style="color:#0ea5e9">${Math.round(pct*100)}%</span></div>`;
+        return `<div class="macro-ring-tile water-tile" onclick="logWater(8);renderMacroBar()" title="Tap to add 8oz">${ringEl}<div class="tile-name" style="color:#0ea5e9">H₂O</div><div class="tile-val" style="color:#0ea5e9">${totalOz.toFixed(0)}<span class="tile-unit">/${WATER_GOAL_OZ}oz</span></div></div>`;
+      })()}
     </div>`;
 }
 
@@ -757,7 +765,9 @@ function logWater(oz){
   if(!oz||oz<=0)return;
   const time=new Date().toTimeString().slice(0,5);
   hydrationLog.push({oz:parseFloat(oz.toFixed(1)),time});
-  saveFoodLog();renderHydrationTab();
+  saveFoodLog();
+  if(currentTab==='hydration')renderHydrationTab();
+  renderMacroBar();
   showToast('+'+( hydrationUnit==='oz'?oz+'oz':ozToMl(oz)+'ml')+' logged 💧');
 }
 function removeWater(idx){hydrationLog.splice(idx,1);saveFoodLog();renderHydrationTab();}
