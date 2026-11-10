@@ -464,10 +464,10 @@ function renderMacroBar(){
       }).join('')}
       ${(()=>{
         const totalOz=hydrationLog.reduce((s,e)=>s+e.oz,0);
-        const pct=Math.min(1,totalOz/WATER_GOAL_OZ);
+        const pct=Math.min(1,totalOz/getWaterGoalOz());
         const r=16,circ=2*Math.PI*r,dash=(circ*pct).toFixed(2),offset=(circ*(1-pct)).toFixed(2);
         const ringEl=`<div class="mring"><svg width="44" height="44" viewBox="0 0 44 44"><circle class="mring-bg" cx="22" cy="22" r="${r}"/><circle class="mring-fill water" cx="22" cy="22" r="${r}" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${offset}"/></svg><span class="mring-pct" style="color:#0ea5e9">${Math.round(pct*100)}%</span></div>`;
-        return `<div class="macro-ring-tile water-tile" onclick="logWater(8);renderMacroBar()" title="Tap to add 8oz">${ringEl}<div class="tile-name" style="color:#0ea5e9">H₂O</div><div class="tile-val" style="color:#0ea5e9">${totalOz.toFixed(0)}<span class="tile-unit">/${WATER_GOAL_OZ}oz</span></div></div>`;
+        return `<div class="macro-ring-tile water-tile" onclick="logWater(8);renderMacroBar()" title="Tap to add 8oz">${ringEl}<div class="tile-name" style="color:#0ea5e9">H₂O</div><div class="tile-val" style="color:#0ea5e9">${totalOz.toFixed(0)}<span class="tile-unit">/${getWaterGoalOz()}oz</span></div></div>`;
       })()}
     </div>`;
 }
@@ -758,7 +758,13 @@ function renderSettingsMacros(){
 function setLoad(load){profile.trainingLoad=load;saveProfile();renderMacroBar();renderSettingsMacros();document.querySelectorAll('.load-opt[data-kind="load"]').forEach(b=>b.classList.toggle('active',b.dataset.val===load));if(currentTab==='summary')renderSummaryTab();showToast('Training load updated')}
 function setGoal(goal){profile.goal=goal;if(goal!=='lose'&&goal!=='gain')profile.goalWeightLbs=null;if(goal!=='performance')profile.performanceGoal=null;saveProfile();renderMacroBar();renderSettingsMacros();document.querySelectorAll('.load-opt[data-kind="goal"]').forEach(b=>b.classList.toggle('active',b.dataset.val===goal));renderGoalSubOptions();if(currentTab==='summary')renderSummaryTab();const gL={performance:'Performance',maintain:'Maintain',lose:'Lose Weight',gain:'Gain Weight'};showToast('Goal: '+gL[goal])}
 // ── Hydration ──────────────────────────────────────────────────────────────
-const WATER_GOAL_OZ=100;
+function getWaterGoalOz(){
+  const lbs=(profile&&profile.weightLbs)||180;
+  const load=getTodayLoad();
+  const base=Math.round(lbs*0.55); // 0.55oz per lb baseline
+  const bonus={rest:0,easy:8,hard:16,long:24}[load]||0;
+  return base+bonus;
+}
 function ozToMl(oz){return Math.round(oz*29.5735);}
 function mlToOz(ml){return Math.round(ml/29.5735*10)/10;}
 function logWater(oz){
@@ -782,9 +788,9 @@ function logCustomWater(){
 function renderHydrationTab(){
   const el=document.getElementById('tab-content');
   const totalOz=hydrationLog.reduce((s,e)=>s+e.oz,0);
-  const pct=Math.min(1,totalOz/WATER_GOAL_OZ);
+  const pct=Math.min(1,totalOz/getWaterGoalOz());
   const displayTotal=hydrationUnit==='oz'?totalOz.toFixed(1)+' oz':ozToMl(totalOz)+' ml';
-  const displayGoal=hydrationUnit==='oz'?WATER_GOAL_OZ+' oz':ozToMl(WATER_GOAL_OZ)+' ml';
+  const displayGoal=hydrationUnit==='oz'?getWaterGoalOz()+' oz':ozToMl(getWaterGoalOz())+' ml';
   const arcColor=pct>=1?'#22c55e':pct>=0.5?'#0ea5e9':'#38bdf8';
   const r=70,cx=90,cy=90,sw=12,circ=2*Math.PI*r;
   const dash=(circ*pct).toFixed(1),gap=(circ*(1-pct)).toFixed(1);
