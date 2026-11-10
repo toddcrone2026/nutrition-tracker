@@ -51,8 +51,12 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .pie-cal-unit{font-size:9px;color:var(--text3)}
 .macro-rings-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
 .macro-ring-tile{background:var(--surface2);border-radius:12px;padding:10px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:3px}
-.macro-ring-tile.water-tile{cursor:pointer;border:1.5px solid rgba(14,165,233,0.2);}
+.macro-ring-tile.water-tile{border:1.5px solid rgba(14,165,233,0.2);}
 .macro-ring-tile.water-tile:active{opacity:.7}
+.water-pm-row{display:flex;gap:6px;margin-top:4px;}
+.water-pm-btn{width:26px;height:26px;border-radius:50%;border:1.5px solid rgba(14,165,233,0.4);background:none;color:#0ea5e9;font-size:16px;font-weight:700;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:var(--font);}
+.water-pm-btn:active{background:rgba(14,165,233,0.15);}
+.water-pm-btn.water-pm-add{background:rgba(14,165,233,0.12);}
 .macro-ring-tile.over .tile-val{color:var(--danger)}
 .macro-ring-tile.warn .tile-val{color:var(--warn)}
 .tile-name{font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
@@ -467,7 +471,7 @@ function renderMacroBar(){
         const pct=Math.min(1,totalOz/getWaterGoalOz());
         const r=16,circ=2*Math.PI*r,dash=(circ*pct).toFixed(2),offset=(circ*(1-pct)).toFixed(2);
         const ringEl=`<div class="mring"><svg width="44" height="44" viewBox="0 0 44 44"><circle class="mring-bg" cx="22" cy="22" r="${r}"/><circle class="mring-fill water" cx="22" cy="22" r="${r}" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${offset}"/></svg><span class="mring-pct" style="color:#0ea5e9">${Math.round(pct*100)}%</span></div>`;
-        return `<div class="macro-ring-tile water-tile" onclick="logWater(8);renderMacroBar()" title="Tap to add 8oz">${ringEl}<div class="tile-name" style="color:#0ea5e9">H₂O</div><div class="tile-val" style="color:#0ea5e9">${totalOz.toFixed(0)}<span class="tile-unit">/${getWaterGoalOz()}oz</span></div></div>`;
+        return `<div class="macro-ring-tile water-tile">${ringEl}<div class="tile-name" style="color:#0ea5e9">H₂O</div><div class="tile-val" style="color:#0ea5e9">${totalOz.toFixed(0)}<span class="tile-unit">/${getWaterGoalOz()}oz</span></div><div class="water-pm-row"><button class="water-pm-btn" onclick="event.stopPropagation();removeLastWater()">−</button><button class="water-pm-btn water-pm-add" onclick="event.stopPropagation();logWater(8)">+</button></div></div>`;
       })()}
     </div>`;
 }
@@ -776,7 +780,8 @@ function logWater(oz){
   renderMacroBar();
   showToast('+'+( hydrationUnit==='oz'?oz+'oz':ozToMl(oz)+'ml')+' logged 💧');
 }
-function removeWater(idx){hydrationLog.splice(idx,1);saveFoodLog();renderHydrationTab();}
+function removeWater(idx){hydrationLog.splice(idx,1);saveFoodLog();renderHydrationTab();renderMacroBar();}
+function removeLastWater(){if(!hydrationLog.length){showToast('Nothing to remove');return;}hydrationLog.pop();saveFoodLog();if(currentTab==='hydration')renderHydrationTab();renderMacroBar();showToast('Removed 8oz 💧');}
 function setHydrationUnit(u){hydrationUnit=u;renderHydrationTab();}
 function logCustomWater(){
   const input=document.getElementById('water-custom-input');
