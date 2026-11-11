@@ -190,7 +190,10 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .sheet{background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;width:100%;max-height:85vh;overflow-y:auto;padding:20px 16px max(32px,env(safe-area-inset-bottom,32px));transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1)}
 .overlay.open .sheet{transform:translateY(0)}
 .sheet-handle{width:36px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 16px}
-.sheet-title{font-size:18px;font-weight:800;margin-bottom:4px}
+.sheet-title{font-size:18px;font-weight:800;margin-bottom:4px;color:#1a1814}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .sheet-title{color:#f0ede8}}
+:root[data-theme="dark"] .sheet-title{color:#f0ede8}
+:root[data-theme="light"] .sheet-title{color:#1a1814}
 .sheet-sub{font-size:12px;color:var(--text2);margin-bottom:16px}
 .nf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
 .nf-cell{background:var(--surface2);border-radius:8px;padding:8px;text-align:center}
@@ -232,10 +235,17 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 /* ── AI Coach ── */
 .ai-coach-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),#ab47bc);border:none;border-radius:var(--radius);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;font-family:var(--font);}
 .ai-coach-btn:active{opacity:0.88;}
-.ai-nudge-card{background:linear-gradient(135deg,rgba(45,158,107,0.08),rgba(171,71,188,0.07));border:1.5px solid rgba(45,158,107,0.25);border-radius:14px;padding:14px 15px;margin-bottom:12px;cursor:pointer;position:relative;}
-.ai-nudge-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--primary);margin-bottom:4px;}
-.ai-nudge-text{font-size:14px;font-weight:600;color:var(--text1);line-height:1.4;}
-.ai-nudge-tap{font-size:11px;color:var(--text3);margin-top:6px;}
+.ai-nudge-card{background:linear-gradient(135deg,rgba(45,158,107,0.12) 0%,rgba(171,71,188,0.08) 100%),var(--surface);border:1.5px solid rgba(45,158,107,0.25);border-radius:14px;padding:14px 15px;margin-bottom:12px;cursor:pointer;position:relative;}
+.ai-nudge-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:#2d9e6b;margin-bottom:4px;}
+.ai-nudge-text{font-size:14px;font-weight:600;color:#1a1814;line-height:1.4;}
+.ai-nudge-tap{font-size:11px;color:#9b9590;margin-top:6px;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .ai-nudge-label{color:#34c47e}:root:not([data-theme="light"]) .ai-nudge-text{color:#f0ede8}:root:not([data-theme="light"]) .ai-nudge-tap{color:#5a5850}}
+:root[data-theme="dark"] .ai-nudge-label{color:#34c47e}
+:root[data-theme="dark"] .ai-nudge-text{color:#f0ede8}
+:root[data-theme="dark"] .ai-nudge-tap{color:#5a5850}
+:root[data-theme="light"] .ai-nudge-label{color:#2d9e6b}
+:root[data-theme="light"] .ai-nudge-text{color:#1a1814}
+:root[data-theme="light"] .ai-nudge-tap{color:#9b9590}
 /* ── Barcode Scanner Banner ── */
 .scan-banner{display:flex;align-items:center;gap:12px;background:rgba(45,158,107,0.08);border:1.5px solid rgba(45,158,107,0.35);border-radius:14px;padding:14px 15px;margin-bottom:12px;cursor:pointer;position:relative;overflow:hidden;box-shadow:0 0 18px rgba(45,158,107,0.08);}
 .scan-banner::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(74,222,128,0.5),transparent);}
@@ -584,6 +594,9 @@ function renderLogTab(){
   const days=[];
   for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()-i);const s=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');const label=i===0?'Today':i===1?'Yesterday':d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});days.push({s,label})}
   let html=`<div class="section-title">Food Log</div><div class="day-scroll">${days.map(d=>`<button class="day-chip ${d.s===selectedDate?'active':''}" onclick="selectDay('${d.s}')">${d.label}</button>`).join('')}</div>`;
+  // AI nudge card — above Breakfast
+  const _aiHtml=foodLog.length>0?(aiNudgeLoaded&&aiNudgeText?`<div class="ai-nudge-card" onclick="openAICoach()"><div class="ai-nudge-label">🤖 AI Coach</div><div class="ai-nudge-text">${aiNudgeText}</div><div class="ai-nudge-tap">Tap for full analysis →</div></div>`:`<button class="ai-coach-btn" onclick="openAICoach()">🤖 Get AI Fueling Feedback</button>`):'';
+  html+=_aiHtml;
   let totalLogged=0;
   MEAL_TYPES.forEach(meal=>{
     const entries=foodLog.filter(e=>e.meal===meal);totalLogged+=entries.length;
@@ -594,17 +607,9 @@ function renderLogTab(){
     html+=`</div>`;
   });
   if(totalLogged===0)html+=`<div class="empty"><div class="empty-icon">🥗</div><div class="empty-msg">Tap "+ Add" to log your first meal</div><div class="empty-sub">Search foods and track your macros</div></div>`;
-  // AI nudge card (shows after first food logged)
-  if(totalLogged>0){
-    if(aiNudgeLoaded&&aiNudgeText){
-      html+=`<div class="ai-nudge-card" onclick="openAICoach()"><div class="ai-nudge-label">🤖 AI Coach</div><div class="ai-nudge-text">${aiNudgeText}</div><div class="ai-nudge-tap">Tap for full analysis →</div></div>`;
-    } else {
-      html+=`<button class="ai-coach-btn" onclick="openAICoach()">🤖 Get AI Fueling Feedback</button>`;
-    }
-  }
   c.innerHTML=html;
   // Load nudge in background if not yet loaded
-  if(totalLogged>0&&!aiNudgeLoaded){loadAINudge();}
+  if(foodLog.length>0&&!aiNudgeLoaded){loadAINudge();}
 }
 function goSearch(meal){pendingMeal=meal;switchTab('search')}
 function selectDay(date){selectedDate=date;updateHeaderDate();aiNudgeText='';aiNudgeLoaded=false;loadFoodLog(date);if(currentTab==='hydration')setTimeout(renderHydrationTab,300);}
