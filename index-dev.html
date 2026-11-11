@@ -599,9 +599,8 @@ function renderLogTab(){
   const days=[];
   for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()-i);const s=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');const label=i===0?'Today':i===1?'Yesterday':d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});days.push({s,label})}
   let html=`<div class="section-title">Food Log</div><div class="day-scroll">${days.map(d=>`<button class="day-chip ${d.s===selectedDate?'active':''}" onclick="selectDay('${d.s}')">${d.label}</button>`).join('')}</div>`;
-  // AI nudge card — above Breakfast
-  const _aiHtml=foodLog.length>0?(aiNudgeLoaded&&aiNudgeText?`<div class="ai-nudge-card" onclick="openAICoach()"><div class="ai-nudge-label">🤖 AI Coach</div><div class="ai-nudge-text">${aiNudgeText}</div><div class="ai-nudge-tap">Tap for full analysis →</div></div>`:`<button class="ai-coach-btn" onclick="openAICoach()">🤖 Get AI Fueling Feedback</button>`):'';
-  html+=_aiHtml;
+  // AI coach button — above Breakfast, tap to get feedback
+  if(foodLog.length>0)html+=`<button class="ai-coach-btn" onclick="openAICoach()">🤖 Get AI Fueling Feedback</button>`;
   let totalLogged=0;
   MEAL_TYPES.forEach(meal=>{
     const entries=foodLog.filter(e=>e.meal===meal);totalLogged+=entries.length;
@@ -613,8 +612,6 @@ function renderLogTab(){
   });
   if(totalLogged===0)html+=`<div class="empty"><div class="empty-icon">🥗</div><div class="empty-msg">Tap "+ Add" to log your first meal</div><div class="empty-sub">Search foods and track your macros</div></div>`;
   c.innerHTML=html;
-  // Load nudge in background if not yet loaded
-  if(foodLog.length>0&&!aiNudgeLoaded){loadAINudge();}
 }
 function goSearch(meal){pendingMeal=meal;switchTab('search')}
 function selectDay(date){selectedDate=date;updateHeaderDate();aiNudgeText='';aiNudgeLoaded=false;loadFoodLog(date);if(currentTab==='hydration')setTimeout(renderHydrationTab,300);}
