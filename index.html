@@ -15,8 +15,14 @@
 :root[data-theme="dark"]{--bg:#131210;--surface:#1e1c19;--surface2:#252320;--border:#2e2b26;--text1:#f0ede8;--text2:#8a8680;--text3:#5a5850;--primary:#34c47e;--primary-dim:rgba(52,196,126,0.12);--warn:#f0973a;--warn-dim:rgba(240,151,58,0.12);color-scheme:dark}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{height:100%}
-body{font-family:var(--font);background:var(--bg);color:var(--text1);font-size:15px;line-height:1.4;overscroll-behavior:none;overflow:hidden;height:100%}
+body{font-family:var(--font);background:#0a0a0a;color:var(--text1);font-size:15px;line-height:1.4;overscroll-behavior:none;overflow:auto;height:100%}
 #app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+/* ── Dev mobile frame (desktop only) ── */
+@media(min-width:600px){
+  body{display:flex;align-items:flex-start;justify-content:center;padding:24px 0;gap:20px;}
+  #app{width:390px;height:844px;border-radius:44px;overflow:hidden;box-shadow:0 0 0 2px #333,0 24px 80px rgba(0,0,0,.8);flex-shrink:0;position:relative;}
+  #dev-label{position:fixed;top:24px;left:50%;transform:translateX(calc(-195px - 90px - 12px));background:#f59e0b;color:#000;font-size:11px;font-weight:800;letter-spacing:.5px;padding:4px 10px;border-radius:6px;font-family:monospace;}
+}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--surface);z-index:11}
 #app-header{background:var(--surface);border-bottom:1px solid var(--border);padding:max(12px,env(safe-area-inset-top,12px)) 16px 0;flex-shrink:0;position:sticky;top:0;z-index:10}
 .header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -49,8 +55,14 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .pie-cal-num{font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 .pie-cal-label{font-size:10px;color:var(--text2);font-variant-numeric:tabular-nums}
 .pie-cal-unit{font-size:9px;color:var(--text3)}
-.macro-rings-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.macro-rings-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
 .macro-ring-tile{background:var(--surface2);border-radius:12px;padding:10px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.macro-ring-tile.water-tile{border:1.5px solid rgba(14,165,233,0.2);}
+.macro-ring-tile.water-tile:active{opacity:.7}
+.water-pm-row{display:flex;gap:6px;margin-top:4px;}
+.water-pm-btn{width:26px;height:26px;border-radius:50%;border:1.5px solid rgba(14,165,233,0.4);background:none;color:#0ea5e9;font-size:16px;font-weight:700;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:var(--font);}
+.water-pm-btn:active{background:rgba(14,165,233,0.15);}
+.water-pm-btn.water-pm-add{background:rgba(14,165,233,0.12);}
 .macro-ring-tile.over .tile-val{color:var(--danger)}
 .macro-ring-tile.warn .tile-val{color:var(--warn)}
 .tile-name{font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
@@ -64,6 +76,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .mring-fill.carbs{stroke:#f5a623}
 .mring-fill.protein{stroke:#27ae60}
 .mring-fill.fat{stroke:#e53935}
+.mring-fill.water{stroke:#0ea5e9}
 .mring-fill.over{stroke:var(--danger)}
 .mring-fill.warn{stroke:var(--warn)}
 .tile-name{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)}
@@ -198,6 +211,39 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .empty-sub{font-size:12px;color:var(--text3);margin-top:4px}
 .divider{height:1px;background:var(--border);margin:12px 0}
 .text-muted{color:var(--text2);font-size:13px}
+
+/* ── Hydration ──────────────────────────────────────────────── */
+.water-unit-toggle{display:flex;background:var(--surface2);border-radius:10px;padding:3px;width:fit-content;}
+.water-unit-btn{padding:6px 18px;border-radius:8px;border:none;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;background:none;color:var(--text2);}
+.water-unit-btn.active{background:var(--primary);color:#fff;}
+.water-quick-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+.water-quick-btn{background:rgba(14,165,233,0.1);border:1.5px solid rgba(14,165,233,0.25);border-radius:12px;padding:12px 4px;font-family:var(--font);font-size:13px;font-weight:700;color:#0ea5e9;cursor:pointer;text-align:center;}
+.water-quick-btn:active{opacity:.7;}
+.water-custom-row{display:flex;gap:8px;}
+.water-custom-row input{flex:1;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-family:var(--font);font-size:15px;color:var(--text1);outline:none;}
+.water-custom-row input:focus{border-color:#0ea5e9;}
+.hydration-chart-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.hydration-chart-label{font-size:11px;color:var(--text2);width:34px;text-align:right;flex-shrink:0;}
+.hydration-chart-bar-track{flex:1;background:var(--surface2);border-radius:4px;height:9px;overflow:hidden;}
+.hydration-chart-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#38bdf8,#0ea5e9);transition:width .4s ease;}
+.hydration-chart-val{font-size:11px;color:var(--text2);width:34px;flex-shrink:0;}
+.hydration-log-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);}
+.hydration-log-item:last-child{border-bottom:none;}
+/* ── Barcode Scanner Banner ── */
+.scan-banner{display:flex;align-items:center;gap:12px;background:rgba(45,158,107,0.08);border:1.5px solid rgba(45,158,107,0.35);border-radius:14px;padding:14px 15px;margin-bottom:12px;cursor:pointer;position:relative;overflow:hidden;box-shadow:0 0 18px rgba(45,158,107,0.08);}
+.scan-banner::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(74,222,128,0.5),transparent);}
+.scan-banner:active{background:rgba(45,158,107,0.14);}
+.scan-icon-wrap{width:42px;height:42px;flex-shrink:0;background:rgba(45,158,107,0.13);border:1px solid rgba(45,158,107,0.22);border-radius:11px;display:flex;align-items:center;justify-content:center;}
+.scan-label{font-size:15px;font-weight:800;color:var(--text1);flex:1;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .scan-label{color:var(--primary)}}
+:root[data-theme="dark"] .scan-label{color:var(--primary)}
+.scan-chevron{color:var(--primary);font-size:20px;font-weight:700;line-height:1;}
+.scan-line{position:absolute;left:9%;right:9%;height:1.5px;background:linear-gradient(90deg,transparent,var(--primary),transparent);pointer-events:none;opacity:0.7;}
+@keyframes scan-move{0%{top:20%}100%{top:78%}}
+.scan-line{animation:scan-move 1.9s ease-in-out infinite alternate;}
+.scan-divider{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.scan-divider::before,.scan-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.scan-divider span{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.1/umd/index.min.js"></script>
 </head>
@@ -215,6 +261,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   </div>
 </div>
 
+<div id="dev-label">DEV</div>
 <div id="app">
   <div id="app-header">
     <div class="header-row">
@@ -246,6 +293,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
     <button class="nav-btn" data-tab="summary" onclick="switchTab('summary')">
       <span class="nav-icon">📊</span><span class="nav-label">Summary</span>
     </button>
+
   </nav>
 </div>
 
@@ -326,6 +374,7 @@ function renderCommonFoodCards(list){return list.map((f,i)=>{const idx=COMMON_FO
 function openLocalFood(idx){const f=COMMON_FOODS[idx];if(!f)return;pendingFood={name:f.name,brand:'',kcalPer100:f.kcal,carbsPer100:f.carbs,proteinPer100:f.protein,fatPer100:f.fat,fiber:f.fiber,sugar:f.sugar,sodium:f.sodium};showAddSheetFromPending()}
 
 let profile=null,userId=null,currentTab='log',selectedDate=todayStr(),foodLog=[],pendingFood=null,searchResults=[],searchTimer=null,targetsCache=null,pendingMeal='Breakfast',pendingEditIdx=-1;
+let hydrationLog=[],hydrationUnit='oz';
 const MEAL_TYPES=['Breakfast','Lunch','Dinner','Snacks'];
 const MEAL_ICONS={Breakfast:'🌅',Lunch:'☀️',Dinner:'🌙',Snacks:'🍎'};
 
@@ -439,6 +488,13 @@ function renderMacroBar(){
         const s=st(m.val,m.target);
         return `<div class="macro-ring-tile ${s}">${ringHtml(pct,m.cls)}<div class="tile-name">${m.label}</div><div class="tile-val">${m.val}<span class="tile-unit">/${m.target}${m.unit}</span></div></div>`;
       }).join('')}
+      ${(()=>{
+        const totalOz=hydrationLog.reduce((s,e)=>s+e.oz,0);
+        const pct=Math.min(1,totalOz/getWaterGoalOz());
+        const r=16,circ=2*Math.PI*r,dash=(circ*pct).toFixed(2),offset=(circ*(1-pct)).toFixed(2);
+        const ringEl=`<div class="mring"><svg width="44" height="44" viewBox="0 0 44 44"><circle class="mring-bg" cx="22" cy="22" r="${r}"/><circle class="mring-fill water" cx="22" cy="22" r="${r}" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${offset}"/></svg><span class="mring-pct" style="color:#0ea5e9">${Math.round(pct*100)}%</span></div>`;
+        return `<div class="macro-ring-tile water-tile">${ringEl}<div class="tile-name" style="color:#0ea5e9">H₂O</div><div class="tile-val" style="color:#0ea5e9">${totalOz.toFixed(0)}<span class="tile-unit">/${getWaterGoalOz()}oz</span></div><div class="water-pm-row"><button class="water-pm-btn" onclick="event.stopPropagation();removeLastWater()">−</button><button class="water-pm-btn water-pm-add" onclick="event.stopPropagation();logWater(8)">+</button></div></div>`;
+      })()}
     </div>`;
 }
 
@@ -462,6 +518,7 @@ function loadFoodLog(date){
   if(!userId)return;
   db.collection('nutrition_logs').doc(logDocId(date)).get().then(snap=>{
     foodLog=snap.exists?(snap.data().entries||[]):[];
+    hydrationLog=snap.exists?(snap.data().hydration||[]):[];
     renderMacroBar();
     if(currentTab==='log')renderLogTab();
     if(currentTab==='summary')renderSummaryTab();
@@ -469,7 +526,7 @@ function loadFoodLog(date){
 }
 function saveFoodLog(){
   if(!userId)return;
-  db.collection('nutrition_logs').doc(logDocId(selectedDate)).set({userId,date:selectedDate,entries:foodLog,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(e=>console.warn('saveFoodLog:',e));
+  db.collection('nutrition_logs').doc(logDocId(selectedDate)).set({userId,date:selectedDate,entries:foodLog,hydration:hydrationLog,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(e=>console.warn('saveFoodLog:',e));
   renderMacroBar();
 }
 
@@ -505,6 +562,7 @@ function switchTab(tab){
   if(tab==='log')renderLogTab();
   if(tab==='search')renderSearchTab();
   if(tab==='summary')renderSummaryTab();
+  if(tab==='hydration')renderHydrationTab();
 }
 
 function renderLogTab(){
@@ -525,7 +583,7 @@ function renderLogTab(){
   c.innerHTML=html;
 }
 function goSearch(meal){pendingMeal=meal;switchTab('search')}
-function selectDay(date){selectedDate=date;updateHeaderDate();loadFoodLog(date)}
+function selectDay(date){selectedDate=date;updateHeaderDate();loadFoodLog(date);if(currentTab==='hydration')setTimeout(renderHydrationTab,300);}
 function deleteLogEntry(idx){foodLog.splice(idx,1);saveFoodLog();renderLogTab();renderMacroBar();showToast('Removed')}
 function editLogEntry(idx){
   const e=foodLog[idx];
@@ -597,7 +655,7 @@ function saveEditedEntry(){
 function renderSearchTab(){
   const c=document.getElementById('tab-content');
   const favs=getFavorites();
-  c.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div class="section-title" style="margin:0">Search Foods</div><div style="display:flex;gap:8px"><button onclick="openScanner()" style="background:var(--primary-dim);border:none;border-radius:20px;padding:6px 13px;font-family:inherit;font-size:12px;font-weight:700;color:var(--primary);cursor:pointer">📷 Scan</button><button onclick="openCustomFoodSheet()" style="background:var(--surface2);border:none;border-radius:20px;padding:6px 13px;font-family:inherit;font-size:12px;font-weight:700;color:var(--text1);cursor:pointer">+ Custom</button></div></div><div class="search-box"><input id="food-search-input" placeholder="e.g. chicken, tempeh, banana…" oninput="onSearchInput()" autocomplete="off" autocorrect="off" spellcheck="false"><span class="s-icon">🔍</span></div><div class="meal-switch">${MEAL_TYPES.map(m=>`<button class="meal-tab ${m===pendingMeal?'active':''}" onclick="setPendingMeal('${m}',this)">${MEAL_ICONS[m]} ${m}</button>`).join('')}</div><div id="search-results-wrap">${favs.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:8px">⭐ Favorites</div>${renderFavoriteCards(favs)}<div style="height:4px"></div>`:''}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:8px">Common Foods</div>${renderCommonFoodCards(COMMON_FOODS.slice(0,12))}</div>`;
+  c.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div class="section-title" style="margin:0">Search Foods</div><button onclick="openCustomFoodSheet()" style="background:var(--surface2);border:none;border-radius:20px;padding:6px 13px;font-family:inherit;font-size:12px;font-weight:700;color:var(--text1);cursor:pointer">+ Custom</button></div><div class="scan-banner" onclick="openScanner()"><div class="scan-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="17" y="2" width="5" height="5" rx="1"/><rect x="2" y="17" width="5" height="5" rx="1"/><line x1="8" y1="4" x2="10" y2="4"/><line x1="12" y1="2" x2="12" y2="7"/><line x1="14" y1="4" x2="16" y2="4"/><line x1="8" y1="20" x2="10" y2="20"/><line x1="12" y1="17" x2="12" y2="22"/><line x1="14" y1="20" x2="16" y2="20"/><line x1="17" y1="12" x2="22" y2="12"/><line x1="12" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="2" y2="12"/></svg></div><span class="scan-label">Barcode Scanner</span><span class="scan-chevron">›</span><div class="scan-line"></div></div><div class="scan-divider"><span>or search by name</span></div><div class="search-box"><input id="food-search-input" placeholder="e.g. chicken, tempeh, banana…" oninput="onSearchInput()" autocomplete="off" autocorrect="off" spellcheck="false"><span class="s-icon">🔍</span></div><div class="meal-switch">${MEAL_TYPES.map(m=>`<button class="meal-tab ${m===pendingMeal?'active':''}" onclick="setPendingMeal('${m}',this)">${MEAL_ICONS[m]} ${m}</button>`).join('')}</div><div id="search-results-wrap">${favs.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:8px">⭐ Favorites</div>${renderFavoriteCards(favs)}<div style="height:4px"></div>`:''}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:8px">Common Foods</div>${renderCommonFoodCards(COMMON_FOODS.slice(0,12))}</div>`;
   setTimeout(()=>document.getElementById('food-search-input')?.focus(),150);
 }
 function setPendingMeal(meal,el){pendingMeal=meal;document.querySelectorAll('.meal-tab').forEach(b=>b.classList.remove('active'));el.classList.add('active')}
@@ -725,6 +783,104 @@ function renderSettingsMacros(){
 }
 function setLoad(load){profile.trainingLoad=load;saveProfile();renderMacroBar();renderSettingsMacros();document.querySelectorAll('.load-opt[data-kind="load"]').forEach(b=>b.classList.toggle('active',b.dataset.val===load));if(currentTab==='summary')renderSummaryTab();showToast('Training load updated')}
 function setGoal(goal){profile.goal=goal;if(goal!=='lose'&&goal!=='gain')profile.goalWeightLbs=null;if(goal!=='performance')profile.performanceGoal=null;saveProfile();renderMacroBar();renderSettingsMacros();document.querySelectorAll('.load-opt[data-kind="goal"]').forEach(b=>b.classList.toggle('active',b.dataset.val===goal));renderGoalSubOptions();if(currentTab==='summary')renderSummaryTab();const gL={performance:'Performance',maintain:'Maintain',lose:'Lose Weight',gain:'Gain Weight'};showToast('Goal: '+gL[goal])}
+// ── Hydration ──────────────────────────────────────────────────────────────
+function getWaterGoalOz(){
+  const lbs=(profile&&profile.weightLbs)||180;
+  const load=getTodayLoad();
+  const base=Math.round(lbs*0.55); // 0.55oz per lb baseline
+  const bonus={rest:0,easy:8,hard:16,long:24}[load]||0;
+  return base+bonus;
+}
+function ozToMl(oz){return Math.round(oz*29.5735);}
+function mlToOz(ml){return Math.round(ml/29.5735*10)/10;}
+function logWater(oz){
+  if(!oz||oz<=0)return;
+  const time=new Date().toTimeString().slice(0,5);
+  hydrationLog.push({oz:parseFloat(oz.toFixed(1)),time});
+  saveFoodLog();
+  if(currentTab==='hydration')renderHydrationTab();
+  renderMacroBar();
+  showToast('+'+( hydrationUnit==='oz'?oz+'oz':ozToMl(oz)+'ml')+' logged 💧');
+}
+function removeWater(idx){hydrationLog.splice(idx,1);saveFoodLog();renderHydrationTab();renderMacroBar();}
+function removeLastWater(){if(!hydrationLog.length){showToast('Nothing to remove');return;}hydrationLog.pop();saveFoodLog();if(currentTab==='hydration')renderHydrationTab();renderMacroBar();showToast('Removed 8oz 💧');}
+function setHydrationUnit(u){hydrationUnit=u;renderHydrationTab();}
+function logCustomWater(){
+  const input=document.getElementById('water-custom-input');
+  if(!input||!input.value)return;
+  const val=parseFloat(input.value);if(!val||val<=0)return;
+  const oz=hydrationUnit==='oz'?val:mlToOz(val);
+  logWater(parseFloat(oz.toFixed(1)));input.value='';
+}
+function renderHydrationTab(){
+  const el=document.getElementById('tab-content');
+  const totalOz=hydrationLog.reduce((s,e)=>s+e.oz,0);
+  const pct=Math.min(1,totalOz/getWaterGoalOz());
+  const displayTotal=hydrationUnit==='oz'?totalOz.toFixed(1)+' oz':ozToMl(totalOz)+' ml';
+  const displayGoal=hydrationUnit==='oz'?getWaterGoalOz()+' oz':ozToMl(getWaterGoalOz())+' ml';
+  const arcColor=pct>=1?'#22c55e':pct>=0.5?'#0ea5e9':'#38bdf8';
+  const r=70,cx=90,cy=90,sw=12,circ=2*Math.PI*r;
+  const dash=(circ*pct).toFixed(1),gap=(circ*(1-pct)).toFixed(1);
+  const quickOz=[8,12,16,24];
+  const hours={};
+  hydrationLog.forEach(e=>{const h=parseInt(e.time.split(':')[0]);hours[h]=(hours[h]||0)+e.oz;});
+  const hourKeys=Array.from({length:16},(_,i)=>i+6);
+  const maxHr=Math.max(8,...Object.values(hours));
+  const chartHTML=hourKeys.map(h=>{
+    const oz=hours[h]||0,label=h>12?(h-12)+'p':h===12?'12p':h+'a';
+    const fillPct=oz?Math.round(oz/maxHr*100):0;
+    const valStr=oz?(hydrationUnit==='oz'?oz.toFixed(0)+'oz':ozToMl(oz)+'ml'):'';
+    return `<div class="hydration-chart-bar-row"><div class="hydration-chart-label">${label}</div><div class="hydration-chart-bar-track"><div class="hydration-chart-bar-fill" style="width:${fillPct}%"></div></div><div class="hydration-chart-val">${valStr}</div></div>`;
+  }).join('');
+  const logItems=[...hydrationLog].reverse().map((e,ri)=>{
+    const i=hydrationLog.length-1-ri;
+    const valStr=hydrationUnit==='oz'?e.oz+' oz':ozToMl(e.oz)+' ml';
+    return `<div class="hydration-log-item"><div><span style="font-size:14px;font-weight:600">${valStr}</span> <span style="font-size:12px;color:var(--text2)">at ${e.time}</span></div><button onclick="removeWater(${i})" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 4px">×</button></div>`;
+  }).join('');
+  const logHTML=hydrationLog.length?`<div class="card"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:10px">Log</div>${logItems}</div>`:'';
+  const ozActive=hydrationUnit==='oz'?'active':'';
+  const mlActive=hydrationUnit==='ml'?'active':'';
+  const quickBtns=quickOz.map(oz=>{const lbl=hydrationUnit==='oz'?oz+'oz':ozToMl(oz)+'ml';return `<button class="water-quick-btn" onclick="logWater(${oz})">+${lbl}</button>`;}).join('');
+  el.innerHTML=`
+    <div class="section-title" style="margin-bottom:12px">Hydration</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="water-unit-toggle">
+        <button class="water-unit-btn ${ozActive}" onclick="setHydrationUnit('oz')">oz</button>
+        <button class="water-unit-btn ${mlActive}" onclick="setHydrationUnit('ml')">ml</button>
+      </div>
+      <div style="font-size:13px;color:var(--text2)">Goal: ${displayGoal}/day</div>
+    </div>
+    <div style="display:flex;justify-content:center;margin-bottom:20px">
+      <div style="position:relative;width:180px;height:180px;display:flex;align-items:center;justify-content:center;">
+        <svg width="180" height="180" style="position:absolute;top:0;left:0;transform:rotate(-90deg)">
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${sw}"/>
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${arcColor}" stroke-width="${sw}" stroke-dasharray="${dash} ${gap}" stroke-linecap="round"/>
+        </svg>
+        <div style="position:relative;text-align:center;">
+          <div style="font-size:30px;font-weight:800;color:var(--text1)">${Math.round(pct*100)}%</div>
+          <div style="font-size:13px;color:var(--text2)">${displayTotal}</div>
+          <div style="font-size:11px;color:${pct>=1?'#22c55e':'var(--text3)'}">
+            ${pct>=1?'✓ Goal met!':'of '+displayGoal}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:10px">Quick Add</div>
+      <div class="water-quick-btns">${quickBtns}</div>
+      <div class="water-custom-row">
+        <input id="water-custom-input" type="number" placeholder="${hydrationUnit==='oz'?'Custom oz':'Custom ml'}" min="1">
+        <button class="btn btn-primary" style="white-space:nowrap" onclick="logCustomWater()">Add</button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:10px">Today by Hour</div>
+      ${chartHTML}
+    </div>
+    ${logHTML}
+  `;
+}
+
 function renderGoalSubOptions(){
   const el=document.getElementById('goal-sub-options');
   if(!el)return;
