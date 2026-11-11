@@ -614,7 +614,7 @@ function renderLogTab(){
   c.innerHTML=html;
 }
 function goSearch(meal){pendingMeal=meal;switchTab('search')}
-function selectDay(date){selectedDate=date;updateHeaderDate();aiNudgeText='';aiNudgeLoaded=false;loadFoodLog(date);if(currentTab==='hydration')setTimeout(renderHydrationTab,300);}
+function selectDay(date){selectedDate=date;updateHeaderDate();loadFoodLog(date);if(currentTab==='hydration')setTimeout(renderHydrationTab,300);}
 function deleteLogEntry(idx){foodLog.splice(idx,1);saveFoodLog();renderLogTab();renderMacroBar();showToast('Removed')}
 function editLogEntry(idx){
   const e=foodLog[idx];
@@ -976,22 +976,6 @@ function buildNudgePrompt(){
   return `Marathon runner, ${timeOfDay}, ${loadLabel}. Logged ${kcalPct}% calories, ${carbPct}% carbs, ${protPct}% protein today. In ONE sentence (max 18 words), give the single most important fueling action right now. No preamble.`;
 }
 
-let aiNudgeText='';
-let aiNudgeLoaded=false;
-
-async function loadAINudge(){
-  const key=getAnthropicKey();
-  if(!key)return;
-  if(foodLog.length===0)return;
-  try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:60,messages:[{role:'user',content:buildNudgePrompt()}]})
-    });
-    if(res.ok){const data=await res.json();aiNudgeText=data.content[0].text.trim();aiNudgeLoaded=true;renderLogTab();}
-  }catch(e){}
-}
 
 async function openAICoach(){
   showAIModal('🤖 AI Fueling Coach','<div style="color:var(--text2);font-size:14px;padding:12px 0">Analyzing your day…</div>');
