@@ -229,6 +229,13 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .hydration-chart-val{font-size:11px;color:var(--text2);width:34px;flex-shrink:0;}
 .hydration-log-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);}
 .hydration-log-item:last-child{border-bottom:none;}
+/* ── AI Coach ── */
+.ai-coach-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),#ab47bc);border:none;border-radius:var(--radius);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;font-family:var(--font);}
+.ai-coach-btn:active{opacity:0.88;}
+.ai-nudge-card{background:linear-gradient(135deg,rgba(45,158,107,0.08),rgba(171,71,188,0.07));border:1.5px solid rgba(45,158,107,0.25);border-radius:14px;padding:14px 15px;margin-bottom:12px;cursor:pointer;position:relative;}
+.ai-nudge-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--primary);margin-bottom:4px;}
+.ai-nudge-text{font-size:14px;font-weight:600;color:var(--text1);line-height:1.4;}
+.ai-nudge-tap{font-size:11px;color:var(--text3);margin-top:6px;}
 /* ── Barcode Scanner Banner ── */
 .scan-banner{display:flex;align-items:center;gap:12px;background:rgba(45,158,107,0.08);border:1.5px solid rgba(45,158,107,0.35);border-radius:14px;padding:14px 15px;margin-bottom:12px;cursor:pointer;position:relative;overflow:hidden;box-shadow:0 0 18px rgba(45,158,107,0.08);}
 .scan-banner::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(74,222,128,0.5),transparent);}
@@ -302,6 +309,13 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 </div>
 <div class="overlay" id="settings-overlay" onclick="closeSettings(event)">
   <div class="sheet" id="settings-body"></div>
+</div>
+<div class="overlay" id="ai-overlay" onclick="closeAIModal(event)">
+  <div class="sheet" id="ai-sheet" style="max-height:82vh;overflow-y:auto">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="ai-modal-title">🤖 AI Fueling Coach</div>
+    <div id="ai-modal-body" style="padding-bottom:24px;"></div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -580,10 +594,20 @@ function renderLogTab(){
     html+=`</div>`;
   });
   if(totalLogged===0)html+=`<div class="empty"><div class="empty-icon">🥗</div><div class="empty-msg">Tap "+ Add" to log your first meal</div><div class="empty-sub">Search foods and track your macros</div></div>`;
+  // AI nudge card (shows after first food logged)
+  if(totalLogged>0){
+    if(aiNudgeLoaded&&aiNudgeText){
+      html+=`<div class="ai-nudge-card" onclick="openAICoach()"><div class="ai-nudge-label">🤖 AI Coach</div><div class="ai-nudge-text">${aiNudgeText}</div><div class="ai-nudge-tap">Tap for full analysis →</div></div>`;
+    } else {
+      html+=`<button class="ai-coach-btn" onclick="openAICoach()">🤖 Get AI Fueling Feedback</button>`;
+    }
+  }
   c.innerHTML=html;
+  // Load nudge in background if not yet loaded
+  if(totalLogged>0&&!aiNudgeLoaded){loadAINudge();}
 }
 function goSearch(meal){pendingMeal=meal;switchTab('search')}
-function selectDay(date){selectedDate=date;updateHeaderDate();loadFoodLog(date);if(currentTab==='hydration')setTimeout(renderHydrationTab,300);}
+function selectDay(date){selectedDate=date;updateHeaderDate();aiNudgeText='';aiNudgeLoaded=false;loadFoodLog(date);if(currentTab==='hydration')setTimeout(renderHydrationTab,300);}
 function deleteLogEntry(idx){foodLog.splice(idx,1);saveFoodLog();renderLogTab();renderMacroBar();showToast('Removed')}
 function editLogEntry(idx){
   const e=foodLog[idx];
@@ -903,6 +927,112 @@ function setTheme(v){
   if(v==='auto'){root.removeAttribute('data-theme');localStorage.removeItem('nt_theme');}
   else{root.setAttribute('data-theme',v);localStorage.setItem('nt_theme',v);}
   renderSettings();
+}
+
+// ── AI Fueling Coach ─────────────────────────────────────────────────────
+function getAnthropicKey(){return localStorage.getItem('mt_anthropic_key')||atob('c2stYW50LXVzci0xSDk4amZaWjEtTTRkWEZobjNGRUR5NTNvOXMyajluRWtCbzVrZVlRZi16S19VUFkxbThHb09TZ2dfWmRFOEVyZkozUHc3ZWNZUVFieVVCMFFUdkxLR1FTUl9KZ1FBQQ==')}
+
+function buildAIPrompt(){
+  const totals=calcTotals(foodLog);
+  const targets=calcTargets(profile||{},getTodayLoad());
+  const load=getTodayLoad();
+  const loadLabel={rest:'rest day',easy:'easy run day',hard:'hard/interval run day',long:'long run day'}[load]||load;
+  const now=new Date();
+  const hour=now.getHours();
+  const timeOfDay=hour<10?'morning':hour<14?'midday':hour<18?'afternoon':'evening';
+  let marathonCtx='';
+  try{const mw=JSON.parse(localStorage.getItem('nt_marathon_today')||'null');if(mw&&mw.date===todayStr()){marathonCtx=`Today's planned workout: ${mw.miles||0} miles, type: ${mw.type||'unknown'}.`;}}catch(e){}
+  const carbPct=targets.carbs>0?Math.round(totals.carbs/targets.carbs*100):0;
+  const protPct=targets.protein>0?Math.round(totals.protein/targets.protein*100):0;
+  const fatPct=targets.fat>0?Math.round(totals.fat/targets.fat*100):0;
+  const kcalPct=targets.kcal>0?Math.round(totals.kcal/targets.kcal*100):0;
+  return `You are a sports nutrition coach for a marathon runner. It is ${timeOfDay} on a ${loadLabel}. ${marathonCtx}
+Current nutrition logged today:
+- Calories: ${totals.kcal} of ${targets.kcal} kcal (${kcalPct}%)
+- Carbs: ${totals.carbs}g of ${targets.carbs}g (${carbPct}%)
+- Protein: ${totals.protein}g of ${targets.protein}g (${protPct}%)
+- Fat: ${totals.fat}g of ${targets.fat}g (${fatPct}%)
+Athlete goal: ${profile?.goal||'performance'}. Training load: ${loadLabel}.
+Give 2–3 specific, actionable fueling recommendations for the rest of today. Be direct and practical. Reference the training load and time of day. Keep it under 80 words total.`;
+}
+
+function buildNudgePrompt(){
+  const totals=calcTotals(foodLog);
+  const targets=calcTargets(profile||{},getTodayLoad());
+  const load=getTodayLoad();
+  const loadLabel={rest:'rest day',easy:'easy run',hard:'hard workout',long:'long run'}[load]||load;
+  const hour=new Date().getHours();
+  const timeOfDay=hour<10?'morning':hour<14?'midday':hour<18?'afternoon':'evening';
+  const carbPct=targets.carbs>0?Math.round(totals.carbs/targets.carbs*100):0;
+  const protPct=targets.protein>0?Math.round(totals.protein/targets.protein*100):0;
+  const kcalPct=targets.kcal>0?Math.round(totals.kcal/targets.kcal*100):0;
+  return `Marathon runner, ${timeOfDay}, ${loadLabel}. Logged ${kcalPct}% calories, ${carbPct}% carbs, ${protPct}% protein today. In ONE sentence (max 18 words), give the single most important fueling action right now. No preamble.`;
+}
+
+let aiNudgeText='';
+let aiNudgeLoaded=false;
+
+async function loadAINudge(){
+  const key=getAnthropicKey();
+  if(!key)return;
+  if(foodLog.length===0)return;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:60,messages:[{role:'user',content:buildNudgePrompt()}]})
+    });
+    if(res.ok){const data=await res.json();aiNudgeText=data.content[0].text.trim();aiNudgeLoaded=true;renderLogTab();}
+  }catch(e){}
+}
+
+async function openAICoach(){
+  showAIModal('🤖 AI Fueling Coach','<div style="color:var(--text2);font-size:14px;padding:12px 0">Analyzing your day…</div>');
+  const overlay=document.getElementById('ai-overlay');
+  overlay.style.display='flex';
+  requestAnimationFrame(()=>overlay.classList.add('open'));
+  const key=getAnthropicKey();
+  if(!key){document.getElementById('ai-modal-body').innerHTML='<p style="color:var(--text2);font-size:14px;">Add your Claude API key in Settings to enable AI coaching.</p>';return;}
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:200,messages:[{role:'user',content:buildAIPrompt()}]})
+    });
+    if(res.ok){
+      const data=await res.json();
+      const text=data.content[0].text.trim();
+      const load=getTodayLoad();
+      const loadLabel={rest:'Rest Day',easy:'Easy Run',hard:'Hard Workout',long:'Long Run'}[load]||load;
+      document.getElementById('ai-modal-body').innerHTML=`
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--primary);margin-bottom:10px">Today · ${loadLabel}</div>
+        <div style="font-size:15px;line-height:1.6;color:var(--text1)">${text.replace(/\n/g,'<br>')}</div>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          ${macroSummaryHtml()}
+        </div>`;
+    }else{document.getElementById('ai-modal-body').innerHTML='<p style="color:var(--danger);font-size:14px;">Could not reach AI coach. Check your connection.</p>';}
+  }catch(e){document.getElementById('ai-modal-body').innerHTML=`<p style="color:var(--danger);font-size:14px;">Error: ${e.message}</p>`;}
+}
+
+function macroSummaryHtml(){
+  const totals=calcTotals(foodLog);
+  const targets=calcTargets(profile||{},getTodayLoad());
+  return`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">
+    ${[['Kcal',totals.kcal,targets.kcal,'var(--warn)'],['Carbs',totals.carbs,targets.carbs,'#7c5cfc'],['Protein',totals.protein,targets.protein,'var(--primary)'],['Fat',totals.fat,targets.fat,'var(--teal)']].map(([n,v,t,c])=>`
+    <div><div style="font-size:15px;font-weight:800;color:${c}">${v}<span style="font-size:10px;color:var(--text3)">/${t}</span></div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">${n}</div></div>`).join('')}
+  </div>`;
+}
+
+function showAIModal(title,bodyHtml){
+  document.getElementById('ai-modal-title').textContent=title;
+  document.getElementById('ai-modal-body').innerHTML=bodyHtml;
+}
+function closeAIModal(e){
+  if(!e||e.target===document.getElementById('ai-overlay')){
+    const overlay=document.getElementById('ai-overlay');
+    overlay.classList.remove('open');
+    setTimeout(()=>{overlay.style.display='none'},300);
+  }
 }
 
 // ── Barcode Scanner ──────────────────────────────────────────────────────
