@@ -1,0 +1,18 @@
+{
+  "name": "Nutrition Tracker DEV",
+  "short_name": "Nutrition⚡",
+  "description": "Dev build — macro and calorie tracker for runners",
+  "start_url": "/nutrition-tracker/index-dev.html",
+  "scope": "/nutrition-tracker/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a1a0d",
+  "theme_color": "#2d9e6b",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='42' fill='%230a1a0d'/><text y='110' x='96' text-anchor='middle' font-size='90'>🥗</text><text y='160' x='96' text-anchor='middle' font-size='40' fill='%232d9e6b' font-weight='bold'>DEV</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
