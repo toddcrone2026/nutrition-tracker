@@ -85,10 +85,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .tile-val{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
 .tile-rem{font-size:9px;color:var(--text3);font-variant-numeric:tabular-nums}
 #bottom-nav{display:flex;background:var(--surface);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,0px);flex-shrink:0}
-.nav-btn{flex:1;background:none;border:none;padding:10px 4px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text2);font-family:var(--font);transition:color .15s}
+.nav-btn{flex:1;background:none;border:none;padding:10px 4px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--text2);font-family:var(--font);font-size:10px;font-weight:500;letter-spacing:.3px;text-transform:uppercase;transition:color .2s;-webkit-tap-highlight-color:transparent}
 .nav-btn.active{color:var(--primary)}
-.nav-icon{font-size:20px;line-height:1}
-.nav-label{font-size:10px;font-weight:700;letter-spacing:.3px}.nav-svg{width:22px;height:22px}
+.nav-svg{width:22px;height:22px}
 #content{flex:1;overflow:hidden;position:relative}#tab-content{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 24px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
 .section-title{font-size:18px;font-weight:800;margin-bottom:14px}
@@ -337,15 +336,17 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   </div>
   <nav id="bottom-nav">
     <button class="nav-btn active" data-tab="log" onclick="switchTab('log')">
-      <span class="nav-icon">📋</span><span class="nav-label">Log</span>
+      <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span class="nav-label">Log</span>
     </button>
     <button class="nav-btn" data-tab="search" onclick="switchTab('search')">
-      <span class="nav-icon">🔍</span><span class="nav-label">Search</span>
+      <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="nav-label">Search</span>
     </button>
     <button class="nav-btn" data-tab="summary" onclick="switchTab('summary')">
-      <span class="nav-icon">📊</span><span class="nav-label">Summary</span>
+      <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span class="nav-label">Summary</span>
     </button>
-
     <button class="nav-btn" data-tab="coach" onclick="switchTab('coach')">
       <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 2a10 10 0 0 0 0 20"/><path d="M9 10h.01M15 10h.01M9.5 14.5s1 1.5 2.5 1.5 2.5-1.5 2.5-1.5"/></svg>
       <span class="nav-label">Coach</span>
