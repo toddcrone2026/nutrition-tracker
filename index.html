@@ -88,7 +88,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .nav-btn{flex:1;background:none;border:none;padding:10px 4px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text2);font-family:var(--font);transition:color .15s}
 .nav-btn.active{color:var(--primary)}
 .nav-icon{font-size:20px;line-height:1}
-.nav-label{font-size:10px;font-weight:700;letter-spacing:.3px}
+.nav-label{font-size:10px;font-weight:700;letter-spacing:.3px}.nav-svg{width:22px;height:22px}
 #tab-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 24px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
 .section-title{font-size:18px;font-weight:800;margin-bottom:14px}
@@ -343,7 +343,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
     </button>
 
     <button class="nav-btn" data-tab="coach" onclick="switchTab('coach')">
-      <span class="nav-icon">🤖</span><span class="nav-label">Ask Coach</span>
+      <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 2a10 10 0 0 0 0 20"/><path d="M9 10h.01M15 10h.01M9.5 14.5s1 1.5 2.5 1.5 2.5-1.5 2.5-1.5"/></svg>
+      <span class="nav-label">Coach</span>
     </button>
   </nav>
 </div>
