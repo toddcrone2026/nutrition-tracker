@@ -271,23 +271,27 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 
     /* ── Ask AI Coach ────────────────────── */
     .coach-wrap{display:flex;flex-direction:column;height:100%;margin:-16px -16px -24px}
-    .coach-hdr{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+    .coach-hdr{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)}
+    .coach-badge-nut{display:inline-flex;align-items:center;gap:5px;background:rgba(45,158,107,0.1);color:var(--primary);border:1px solid rgba(45,158,107,0.2);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:.3px;margin-bottom:6px}
     .coach-hdr h2{font-size:17px;font-weight:800;color:var(--text);margin:0 0 2px}
     .coach-hdr p{font-size:11px;color:var(--text2);margin:0}
+    .coach-ctx{background:var(--surface2);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex-shrink:0}
+    .cpill{background:rgba(45,158,107,0.1);border:1px solid rgba(45,158,107,0.2);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--primary);white-space:nowrap}
+    .cpill.warn{background:rgba(232,134,43,0.1);border-color:rgba(232,134,43,0.2);color:var(--warn)}
     .coach-msgs{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
     .cmsg{max-width:84%;line-height:1.5;font-size:14px;border-radius:16px;padding:9px 13px}
     .cmsg.user{align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:4px}
-    .cmsg.ai{align-self:flex-start;background:var(--surface2);color:var(--text);border-bottom-left-radius:4px}
+    .cmsg.ai{align-self:flex-start;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-bottom-left-radius:4px}
     .cmsg.thinking{opacity:.55;font-style:italic}
     .coach-chips{padding:0 16px 8px;display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0}
-    .cchip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 11px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap}
-    .cchip:active{border-color:var(--primary);color:var(--primary)}
+    .cchip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 11px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap;transition:border-color .2s,color .2s}
+    .cchip:hover{border-color:var(--primary);color:var(--primary);background:rgba(45,158,107,0.08)}
     .coach-row{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface)}
     .coach-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:22px;padding:9px 15px;font-size:14px;color:var(--text);font-family:var(--font);outline:none}
     .coach-row input:focus{border-color:var(--primary)}
     .csend{background:var(--primary);border:none;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
     .csend:disabled{opacity:.4;cursor:default}
-    .csend svg{width:17px;height:17px;fill:#fff}
+    .csend svg{width:17px;height:17px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.1/umd/index.min.js"></script>
 </head>
@@ -1167,8 +1171,21 @@ function renderCoachTabNut(){
   const chips=isLogged
     ?['Will pizza fit my macros?','What should I eat for dinner?','Am I getting enough protein?','How are my macros looking?']
     :['What should I eat today?','How much protein do I need?','Best pre-workout meal?','Is today a rest day nutrition-wise?'];
+  const calTarget=profile?.calories||2000;
+  const calLogged=Math.round(totals.cal||0);
+  const calRemain=calTarget-calLogged;
+  const workoutInfo=(()=>{try{const w=JSON.parse(localStorage.getItem('nt_marathon_today')||'null');return w?`${w.type.charAt(0).toUpperCase()+w.type.slice(1)} · ${w.miles||0} mi`:null;}catch(e){return null;}})();
   c.innerHTML=`<div class="coach-wrap">
-    <div class="coach-hdr"><h2>🤖 Ask AI Coach</h2><p>Knows your macros & today's log · Powered by Claude</p></div>
+    <div class="coach-hdr">
+      <div class="coach-badge-nut"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="currentColor"/></svg> AI Coach · Claude</div>
+      <h2>Ask AI Coach</h2>
+      <p>Knows your nutrition targets &amp; today's log</p>
+    </div>
+    <div class="coach-ctx">
+      ${workoutInfo?`<span class="cpill">🏃 ${workoutInfo}</span>`:''}
+      <span class="cpill">🎯 ${calTarget.toLocaleString()} kcal target</span>
+      ${calRemain<400?`<span class="cpill warn">⚠️ ${calRemain} kcal remaining</span>`:`<span class="cpill">✅ ${calRemain} kcal remaining</span>`}
+    </div>
     <div class="coach-msgs" id="nut-coach-msgs">
       <div class="cmsg ai">Hey ${profile?.name?.split(' ')[0]||'there'}! I can see your macro targets and what you've logged today. Ask me anything about your nutrition!</div>
     </div>
@@ -1178,7 +1195,7 @@ function renderCoachTabNut(){
     <div class="coach-row">
       <input id="nut-coach-input" type="text" placeholder="Ask anything about your nutrition..." onkeydown="if(event.key==='Enter')sendNutCoachMsg()">
       <button class="csend" id="nut-csend" onclick="sendNutCoachMsg()">
-        <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
     </div>
   </div>`;
