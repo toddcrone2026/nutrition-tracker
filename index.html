@@ -89,7 +89,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .nav-btn.active{color:var(--primary)}
 .nav-icon{font-size:20px;line-height:1}
 .nav-label{font-size:10px;font-weight:700;letter-spacing:.3px}.nav-svg{width:22px;height:22px}
-#tab-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 24px}
+#content{flex:1;overflow:hidden;position:relative}#tab-content{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 24px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
 .section-title{font-size:18px;font-weight:800;margin-bottom:14px}
 .btn{display:block;width:100%;padding:14px;border:none;border-radius:var(--radius-sm);font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;text-align:center;transition:opacity .15s}
@@ -331,8 +331,10 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
       <div class="macro-tiles" id="macro-pills-wrap"></div>
     </div>
   </div>
-  <div id="coach-panel"></div>
-  <div id="tab-content"></div>
+  <div id="content">
+    <div id="coach-panel"></div>
+    <div id="tab-content"></div>
+  </div>
   <nav id="bottom-nav">
     <button class="nav-btn active" data-tab="log" onclick="switchTab('log')">
       <span class="nav-icon">📋</span><span class="nav-label">Log</span>
