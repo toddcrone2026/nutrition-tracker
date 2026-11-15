@@ -426,15 +426,20 @@ let favoritesLoaded=false;
 function getFavorites(){return favoritesCache;}
 function isFavorite(name){return favoritesCache.some(f=>f.name===name);}
 function loadFavorites(){
+  // Seed from localStorage backup immediately so search tab shows favorites right away
+  try{const bak=localStorage.getItem('nt_favorites_bak');if(bak){favoritesCache=JSON.parse(bak);favoritesLoaded=true;}}catch(e){}
   if(!userId)return;
   db.collection('nt_favorites').doc(userId).get().then(snap=>{
-    favoritesCache=snap.exists?(snap.data().items||[]):[];
+    const fbFavs=snap.exists?(snap.data().items||[]):null;
+    // If Firebase has data, use it and update backup; otherwise keep backup
+    if(fbFavs!==null){favoritesCache=fbFavs;try{localStorage.setItem('nt_favorites_bak',JSON.stringify(fbFavs));}catch(e){}}
     favoritesLoaded=true;
     if(currentTab==='search')renderSearchTab();
-  }).catch(()=>{favoritesCache=[];favoritesLoaded=true;});
+  }).catch(()=>{favoritesLoaded=true;});
 }
 function saveFavorites(favs){
   favoritesCache=favs;
+  try{localStorage.setItem('nt_favorites_bak',JSON.stringify(favs));}catch(e){}
   if(!userId)return;
   db.collection('nt_favorites').doc(userId).set({items:favs}).catch(()=>{});
 }
@@ -1198,11 +1203,23 @@ function renderCoachTabNut(){
   const workoutInfo=(()=>{try{const w=JSON.parse(localStorage.getItem('nt_marathon_today')||'null');return w?`${w.type.charAt(0).toUpperCase()+w.type.slice(1)} · ${w.miles||0} mi`:null;}catch(e){return null;}})();
   const firstName=(profile?.name||'there').split(' ')[0];
   const chipHtml=chips.map(s=>'<button class="cchip" onclick="nutCoachChip(this,'+JSON.stringify(s)+')">'+s+'</button>').join('');
+  // Restore session (persists across tab switches; clears on app reopen)
+  let savedHistory=[];let chipsHidden=false;
+  try{
+    const h=sessionStorage.getItem('nut_coach_history');
+    const ch=sessionStorage.getItem('nut_coach_chips_hidden');
+    if(h)savedHistory=JSON.parse(h);
+    if(ch==='1')chipsHidden=true;
+  }catch(e){}
+  let msgHtml=savedHistory.length
+    ?savedHistory.map(m=>'<div class="cmsg '+(m.role==='user'?'user':'ai')+'">'+m.content.replace(/
+/g,'<br>')+'</div>').join('')
+    :'<div class="cmsg ai">Hey '+firstName+'! I can see your macro targets and what you've logged today. Ask me anything about your nutrition!</div>';
   c.innerHTML=[
     '<div class="coach-hdr">',
     '<div class="coach-badge-nut"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="currentColor"/></svg> AI Coach · Claude</div>',
     '<h2>Ask AI Coach</h2>',
-    '<p>Knows your nutrition targets &amp; today&#39;s log</p>',
+    '<p>Knows your nutrition targets &amp; today's log</p>',
     '</div>',
     '<div class="coach-ctx">',
     workoutInfo?'<span class="cpill">🏃 '+workoutInfo+'</span>':'',
@@ -1210,9 +1227,9 @@ function renderCoachTabNut(){
     calRemain<400?'<span class="cpill warn">⚠️ '+calRemain+' kcal remaining</span>':'<span class="cpill">✅ '+calRemain+' kcal remaining</span>',
     '</div>',
     '<div class="coach-msgs" id="nut-coach-msgs">',
-    '<div class="cmsg ai">Hey '+firstName+'! I can see your macro targets and what you\'ve logged today. Ask me anything about your nutrition!</div>',
+    msgHtml,
     '</div>',
-    '<div class="coach-chips" id="nut-coach-chips">',
+    '<div class="coach-chips" id="nut-coach-chips"'+(chipsHidden?' style="display:none"':'')+'>',
     chipHtml,
     '</div>',
     '<div class="coach-row">',
@@ -1222,11 +1239,14 @@ function renderCoachTabNut(){
     '</button></div>',
   ].join('');
   document.getElementById('nut-coach-input').addEventListener('keydown',function(e){if(e.key==='Enter')sendNutCoachMsg();});
-  nutCoachHistory=[];
+  nutCoachHistory=savedHistory;
+  if(savedHistory.length){const msgs=document.getElementById('nut-coach-msgs');msgs.scrollTop=msgs.scrollHeight;}
 }
+
 
 function nutCoachChip(el,text){
   document.getElementById('nut-coach-chips').style.display='none';
+  try{sessionStorage.setItem('nut_coach_chips_hidden','1');}catch(e){}
   document.getElementById('nut-coach-input').value=text;
   sendNutCoachMsg();
 }
@@ -1256,6 +1276,7 @@ async function sendNutCoachMsg(){
   }catch(e){
     document.getElementById('nut-thinking').outerHTML=`<div class="cmsg ai">Couldn't reach the server. Check your connection.</div>`;
   }
+  try{sessionStorage.setItem('nut_coach_history',JSON.stringify(nutCoachHistory));}catch(e){}
   document.getElementById('nut-csend').disabled=false;
   msgs.scrollTop=msgs.scrollHeight;
 }
