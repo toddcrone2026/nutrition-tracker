@@ -1214,8 +1214,9 @@ function renderCoachTabNut(){
   // Restore session (persists across tab switches; clears on app reopen)
   let savedHistory=[];let chipsHidden=false;
   try{
-    const h=sessionStorage.getItem('nut_coach_history');
-    const ch=sessionStorage.getItem('nut_coach_chips_hidden');
+    const st=JSON.parse(localStorage.getItem('nut_coach_state')||'null');
+    const h=st&&st.date===todayStr()?JSON.stringify(st.history||[]):null;
+    const ch=st&&st.date===todayStr()&&st.chipsHidden?'1':null;
     if(h)savedHistory=JSON.parse(h);
     if(ch==='1')chipsHidden=true;
   }catch(e){}
@@ -1253,7 +1254,7 @@ function renderCoachTabNut(){
 
 function nutCoachChip(el,text){
   document.getElementById('nut-coach-chips').style.display='none';
-  try{sessionStorage.setItem('nut_coach_chips_hidden','1');}catch(e){}
+  nutCoachSave(true);
   document.getElementById('nut-coach-input').value=text;
   sendNutCoachMsg();
 }
@@ -1267,6 +1268,15 @@ LOGGING FOOD: Only when the user explicitly asks you to log/add/record a food (e
 - Numbers are whole-number totals for the full amount eaten. Give your best estimate; don't ask follow-up questions.
 - Keep the visible reply to one short sentence confirming what you logged with its macros.
 - Never output a <log> tag when the user is only asking about macros or for advice. Never mention the tag.`;
+function nutCoachSave(hideChips){try{const st=JSON.parse(localStorage.getItem('nut_coach_state')||'null')||{};const same=st.date===todayStr();localStorage.setItem('nut_coach_state',JSON.stringify({date:todayStr(),history:nutCoachHistory,chipsHidden:!!(hideChips||(same&&st.chipsHidden))}));}catch(e){}}
+function nutIsLogRequest(t){return /\b(log|add|record|track|save)\b/i.test(t)&&!/\b(how|what|should|can i|could i)\b[^.?!]*\b(log|track)\b(ging)?\b/i.test(t)}
+async function nutCoachExtractLog(key){
+  const sys=`Today's date: ${todayStr()}. The user just asked to log food. Using the conversation, output ONLY <log> tags (one per food the user asked to log), nothing else. Format: <log>{"name":"Short food name","serving":"2 slices","meal":"Breakfast|Lunch|Dinner|Snacks or null","kcal":0,"carbs":0,"protein":0,"fat":0}</log>. Use numbers already given in the conversation for that food when available; otherwise your best estimate. Whole-number totals for the full amount.`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:400,system:sys,messages:nutCoachHistory})});
+    const d=await res.json();return parseNutLogTags(d.content?.[0]?.text||'').items;
+  }catch(e){return[]}
+}
 function nutMealNow(){const h=new Date().getHours();return h<10?'Breakfast':h<15?'Lunch':h<21?'Dinner':'Snacks'}
 function parseNutLogTags(raw){
   const items=[];
@@ -1289,7 +1299,7 @@ function nutCoachLogCard(e){
 }
 function nutCoachFind(cid){const e=nutCoachLogged[cid];if(!e)return -1;let i=foodLog.indexOf(e);if(i<0)i=foodLog.findIndex(x=>x.source==='coach'&&x.name===e.name&&x.kcalPer===e.kcalPer&&x.meal===e.meal);return i}
 function nutCoachMoveMeal(cid,meal){const i=nutCoachFind(cid);if(i<0)return;foodLog[i].meal=meal;nutCoachLogged[cid].meal=meal;saveFoodLog();showToast('Moved to '+meal)}
-function nutCoachUndo(cid){const i=nutCoachFind(cid);if(i>=0){foodLog.splice(i,1);saveFoodLog();}const c=document.getElementById(cid);if(c){c.classList.add('undone');c.querySelector('.ok').textContent='Removed from log';c.querySelector('.act')?.remove();}nutCoachHistory.push({role:'user',content:'(I removed '+(nutCoachLogged[cid]?.name||'that item')+' from my log.)'},{role:'assistant',content:'Got it — removed.'});try{sessionStorage.setItem('nut_coach_history',JSON.stringify(nutCoachHistory));}catch(e){}showToast('Removed from log')}
+function nutCoachUndo(cid){const i=nutCoachFind(cid);if(i>=0){foodLog.splice(i,1);saveFoodLog();}const c=document.getElementById(cid);if(c){c.classList.add('undone');c.querySelector('.ok').textContent='Removed from log';c.querySelector('.act')?.remove();}nutCoachHistory.push({role:'user',content:'(I removed '+(nutCoachLogged[cid]?.name||'that item')+' from my log.)'},{role:'assistant',content:'Got it — removed.'});nutCoachSave();showToast('Removed from log')}
 
 async function sendNutCoachMsg(){
   const input=document.getElementById('nut-coach-input');
@@ -1311,7 +1321,8 @@ async function sendNutCoachMsg(){
     });
     const data=await res.json();
     const raw=data.content?.[0]?.text||'Sorry, try again!';
-    const {text:reply,items}=parseNutLogTags(raw);
+    let {text:reply,items}=parseNutLogTags(raw);
+    if(!items.length&&nutIsLogRequest(text))items=await nutCoachExtractLog(key);
     const logged=items.map(nutCoachLogItem).filter(Boolean);
     nutCoachHistory.push({role:'assistant',content:reply+(logged.length?'\n'+logged.map(e=>`✓ Logged to ${e.meal}: ${e.name} (${e.servingUnit}) — ${e.kcalPer} kcal, ${e.carbsPer}g C, ${e.proteinPer}g P, ${e.fatPer}g F`).join('\n'):'')});
     document.getElementById('nut-thinking').outerHTML=`<div class="cmsg ai">${(reply||'Done — added to your log.').replace(/\n/g,'<br>')}</div>`+logged.map(nutCoachLogCard).join('');
@@ -1319,7 +1330,7 @@ async function sendNutCoachMsg(){
   }catch(e){
     document.getElementById('nut-thinking').outerHTML=`<div class="cmsg ai">Couldn't reach the server. Check your connection.</div>`;
   }
-  try{sessionStorage.setItem('nut_coach_history',JSON.stringify(nutCoachHistory));}catch(e){}
+  nutCoachSave();
   document.getElementById('nut-csend').disabled=false;
   msgs.scrollTop=msgs.scrollHeight;
 }
