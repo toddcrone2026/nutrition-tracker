@@ -1220,14 +1220,13 @@ function renderCoachTabNut(){
     if(ch==='1')chipsHidden=true;
   }catch(e){}
   let msgHtml=savedHistory.length
-    ?savedHistory.map(m=>'<div class="cmsg '+(m.role==='user'?'user':'ai')+'">'+m.content.replace(/
-/g,'<br>')+'</div>').join('')
-    :'<div class="cmsg ai">Hey '+firstName+'! I can see your macro targets and what you've logged today. Ask me anything about your nutrition!</div>';
+    ?savedHistory.map(m=>'<div class="cmsg '+(m.role==='user'?'user':'ai')+'">'+m.content.replace(/\n/g,'<br>')+'</div>').join('')
+    :'<div class="cmsg ai">Hey '+firstName+'! I can see your macro targets and what you\'ve logged today. Ask me anything about your nutrition!</div>';
   c.innerHTML=[
     '<div class="coach-hdr">',
     '<div class="coach-badge-nut"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="currentColor"/></svg> AI Coach · Claude</div>',
     '<h2>Ask AI Coach</h2>',
-    '<p>Knows your nutrition targets &amp; today's log</p>',
+    '<p>Knows your nutrition targets &amp; today\'s log</p>',
     '</div>',
     '<div class="coach-ctx">',
     workoutInfo?'<span class="cpill">🏃 '+workoutInfo+'</span>':'',
@@ -1302,7 +1301,7 @@ async function sendNutCoachMsg(){
   msgs.innerHTML+=`<div class="cmsg ai thinking" id="nut-thinking">Coach is thinking...</div>`;
   msgs.scrollTop=msgs.scrollHeight;
   nutCoachHistory.push({role:'user',content:text});
-  const sys=`You are an expert sports nutritionist and AI coach. Be concise and practical — 2-4 sentences unless a meal plan is requested. Always reference the user's actual logged data and remaining macros.\n\nContext:\n${buildNutCoachContext()}+NUT_LOG_RULES;
+  const sys=`You are an expert sports nutritionist and AI coach. Be concise and practical — 2-4 sentences unless a meal plan is requested. Always reference the user's actual logged data and remaining macros.\n\nContext:\n${buildNutCoachContext()}`+NUT_LOG_RULES;
   try{
     const key=getAnthropicKey();
     const res=await fetch('https://api.anthropic.com/v1/messages',{
