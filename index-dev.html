@@ -293,6 +293,14 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
     .csend{background:var(--primary);border:none;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:opacity .15s}
     .csend:disabled{opacity:.35;cursor:default}
     .csend svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .clog{align-self:flex-start;width:85%;background:var(--surface);border:1.5px solid var(--primary);border-radius:14px;padding:10px 12px;font-size:13px}
+    .clog .ok{color:var(--primary);font-weight:800;font-size:12px;margin-bottom:3px}
+    .clog .nm{font-weight:700;color:var(--text1)}
+    .clog .mac{color:var(--text2);font-size:12px;margin-top:2px}
+    .clog .act{display:flex;gap:6px;margin-top:8px}
+    .clog select,.clog button{font-family:var(--font);font-size:12px;font-weight:700;border-radius:20px;padding:5px 10px;border:1px solid var(--border);background:var(--surface2);color:var(--text1)}
+    .clog button{color:var(--warn);cursor:pointer}
+    .clog.undone{border-color:var(--border);opacity:.6}
     #app.coach-mode .macro-strip{display:none}
     #app.coach-mode .header-row{margin-bottom:12px}
 </style>
@@ -1251,6 +1259,39 @@ function nutCoachChip(el,text){
   sendNutCoachMsg();
 }
 
+const NUT_LOG_RULES=`
+
+LOGGING FOOD: Only when the user explicitly asks you to log/add/record a food (e.g. "log it", "add that to dinner", "log a banana as a snack"), append one tag per food at the very end of your reply, exactly like:
+<log>{"name":"Short food name","serving":"2 slices","meal":"Dinner","kcal":460,"carbs":52,"protein":20,"fat":18}</log>
+- meal must be Breakfast, Lunch, Dinner or Snacks if the user named one, otherwise null.
+- If they say "log it/that", log the food just discussed using the same numbers you gave.
+- Numbers are whole-number totals for the full amount eaten. Give your best estimate; don't ask follow-up questions.
+- Keep the visible reply to one short sentence confirming what you logged with its macros.
+- Never output a <log> tag when the user is only asking about macros or for advice. Never mention the tag.`;
+function nutMealNow(){const h=new Date().getHours();return h<10?'Breakfast':h<15?'Lunch':h<21?'Dinner':'Snacks'}
+function parseNutLogTags(raw){
+  const items=[];
+  const text=raw.replace(/<log>([\s\S]*?)<\/log>/g,(m,j)=>{try{items.push(JSON.parse(j.trim()))}catch(e){}return''}).trim();
+  return{text,items};
+}
+const nutCoachLogged={};let nutCoachLogSeq=0;
+function nutEsc(t){return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function nutCoachLogItem(it){
+  const n=v=>Math.max(0,Math.round(Number(v)||0));
+  if(!it||!it.name)return null;
+  const meal=MEAL_TYPES.includes(it.meal)?it.meal:nutMealNow();
+  const e={name:String(it.name).slice(0,80),meal,servingQty:1,servingUnit:String(it.serving||'1 serving').slice(0,40),kcalPer:n(it.kcal),carbsPer:n(it.carbs),proteinPer:n(it.protein),fatPer:n(it.fat),source:'coach'};
+  foodLog.push(e);
+  e._cid='cl'+(++nutCoachLogSeq);nutCoachLogged[e._cid]=e;
+  return e;
+}
+function nutCoachLogCard(e){
+  return `<div class="clog" id="${e._cid}"><div class="ok">✓ Added to log</div><div class="nm">${nutEsc(e.name)} · ${nutEsc(e.servingUnit)}</div><div class="mac">${e.kcalPer} kcal · ${e.carbsPer}g C · ${e.proteinPer}g P · ${e.fatPer}g F</div><div class="act"><select onchange="nutCoachMoveMeal('${e._cid}',this.value)">${MEAL_TYPES.map(m=>`<option ${m===e.meal?'selected':''}>${m}</option>`).join('')}</select><button onclick="nutCoachUndo('${e._cid}')">Undo</button></div></div>`;
+}
+function nutCoachFind(cid){const e=nutCoachLogged[cid];if(!e)return -1;let i=foodLog.indexOf(e);if(i<0)i=foodLog.findIndex(x=>x.source==='coach'&&x.name===e.name&&x.kcalPer===e.kcalPer&&x.meal===e.meal);return i}
+function nutCoachMoveMeal(cid,meal){const i=nutCoachFind(cid);if(i<0)return;foodLog[i].meal=meal;nutCoachLogged[cid].meal=meal;saveFoodLog();showToast('Moved to '+meal)}
+function nutCoachUndo(cid){const i=nutCoachFind(cid);if(i>=0){foodLog.splice(i,1);saveFoodLog();}const c=document.getElementById(cid);if(c){c.classList.add('undone');c.querySelector('.ok').textContent='Removed from log';c.querySelector('.act')?.remove();}nutCoachHistory.push({role:'user',content:'(I removed '+(nutCoachLogged[cid]?.name||'that item')+' from my log.)'},{role:'assistant',content:'Got it — removed.'});try{sessionStorage.setItem('nut_coach_history',JSON.stringify(nutCoachHistory));}catch(e){}showToast('Removed from log')}
+
 async function sendNutCoachMsg(){
   const input=document.getElementById('nut-coach-input');
   const text=input.value.trim();if(!text)return;
@@ -1261,18 +1302,21 @@ async function sendNutCoachMsg(){
   msgs.innerHTML+=`<div class="cmsg ai thinking" id="nut-thinking">Coach is thinking...</div>`;
   msgs.scrollTop=msgs.scrollHeight;
   nutCoachHistory.push({role:'user',content:text});
-  const sys=`You are an expert sports nutritionist and AI coach. Be concise and practical — 2-4 sentences unless a meal plan is requested. Always reference the user's actual logged data and remaining macros.\n\nContext:\n${buildNutCoachContext()}`;
+  const sys=`You are an expert sports nutritionist and AI coach. Be concise and practical — 2-4 sentences unless a meal plan is requested. Always reference the user's actual logged data and remaining macros.\n\nContext:\n${buildNutCoachContext()}+NUT_LOG_RULES;
   try{
     const key=getAnthropicKey();
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:300,system:sys,messages:nutCoachHistory})
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:600,system:sys,messages:nutCoachHistory})
     });
     const data=await res.json();
-    const reply=data.content?.[0]?.text||'Sorry, try again!';
-    nutCoachHistory.push({role:'assistant',content:reply});
-    document.getElementById('nut-thinking').outerHTML=`<div class="cmsg ai">${reply.replace(/\n/g,'<br>')}</div>`;
+    const raw=data.content?.[0]?.text||'Sorry, try again!';
+    const {text:reply,items}=parseNutLogTags(raw);
+    const logged=items.map(nutCoachLogItem).filter(Boolean);
+    nutCoachHistory.push({role:'assistant',content:reply+(logged.length?'\n'+logged.map(e=>`✓ Logged to ${e.meal}: ${e.name} (${e.servingUnit}) — ${e.kcalPer} kcal, ${e.carbsPer}g C, ${e.proteinPer}g P, ${e.fatPer}g F`).join('\n'):'')});
+    document.getElementById('nut-thinking').outerHTML=`<div class="cmsg ai">${(reply||'Done — added to your log.').replace(/\n/g,'<br>')}</div>`+logged.map(nutCoachLogCard).join('');
+    if(logged.length){saveFoodLog();showToast(logged.length===1?'Added to '+logged[0].meal:`Added ${logged.length} items`);}
   }catch(e){
     document.getElementById('nut-thinking').outerHTML=`<div class="cmsg ai">Couldn't reach the server. Check your connection.</div>`;
   }
