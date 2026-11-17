@@ -303,6 +303,30 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
     .clog.undone{border-color:var(--border);opacity:.6}
     #app.coach-mode .macro-strip{display:none}
     #app.coach-mode .header-row{margin-bottom:12px}
+
+/* What's New overlay */
+#wn-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:flex-end;padding:12px;animation:wnFadeIn 0.25s ease}
+#wn-overlay.hiding{animation:wnFadeOut 0.25s ease forwards}
+@keyframes wnFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes wnFadeOut{from{opacity:1}to{opacity:0}}
+#wn-sheet{width:100%;background:var(--surface);border-radius:20px;overflow:hidden;animation:wnSlideUp 0.35s cubic-bezier(0.34,1.26,0.64,1);box-shadow:0 -4px 24px rgba(0,0,0,0.15)}
+#wn-overlay.hiding #wn-sheet{animation:wnSlideDown 0.25s ease forwards}
+@keyframes wnSlideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes wnSlideDown{from{transform:translateY(0);opacity:1}to{transform:translateY(40px);opacity:0}}
+.wn-top{padding:20px 20px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
+.wn-icon{width:44px;height:44px;border-radius:12px;background:rgba(45,158,107,0.1);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.wn-eyebrow{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--primary);margin-bottom:2px}
+.wn-title{font-size:18px;font-weight:700;color:var(--text1)}
+.wn-items{padding:12px 20px 16px}
+.wn-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0}
+.wn-item+.wn-item{border-top:1px solid var(--border)}
+.wn-item-icon{width:36px;height:36px;border-radius:10px;background:rgba(45,158,107,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.wn-item-body{flex:1;min-width:0}
+.wn-item-name{font-size:14px;font-weight:700;color:var(--text1)}
+.wn-where{display:inline-block;margin-top:3px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;background:rgba(45,158,107,0.1);color:var(--primary)}
+.wn-item-desc{font-size:12px;color:var(--text2);margin-top:3px;line-height:1.45}
+.wn-footer{padding:0 20px 20px}
+.wn-dismiss{width:100%;padding:14px;border-radius:14px;border:none;font-family:var(--font);font-size:15px;font-weight:700;background:var(--primary);color:#fff;cursor:pointer;letter-spacing:.01em}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.1/umd/index.min.js"></script>
 </head>
@@ -601,7 +625,7 @@ window.addEventListener('load',()=>{
 });
 function updateHeaderDate(){document.getElementById('header-date').textContent=fmtDate(selectedDate)}
 function initApp(){
-  renderMacroBar();loadFoodLog(selectedDate);loadFavorites();switchTab('log');
+  renderMacroBar();loadFoodLog(selectedDate);loadFavorites();switchTab('log');setTimeout(showWhatsNew,600);
   db.collection('nutrition_users').doc(userId).get().then(snap=>{
     if(snap.exists){const data=snap.data();['sex','age','heightIn','weightLbs','goal','trainingLoad','goalWeightLbs','performanceGoal'].forEach(f=>{if(data[f]!=null)profile[f]=data[f]});try{localStorage.setItem('nutrition_profile',JSON.stringify(profile))}catch(e){}renderMacroBar()}
   }).catch(()=>{});
@@ -1342,6 +1366,21 @@ async function sendNutCoachMsg(){
   document.getElementById('nut-csend').disabled=false;
   msgs.scrollTop=msgs.scrollHeight;
 }
+
+// What's New banner
+const WN_VERSION_N = 'nutrition-wn-v1';
+function showWhatsNew(){
+  try{if(localStorage.getItem(WN_VERSION_N))return;}catch(e){}
+  var el=document.getElementById('wn-overlay');
+  if(el)el.style.display='flex';
+}
+function closeWhatsNew(){
+  var el=document.getElementById('wn-overlay');
+  if(!el)return;
+  el.classList.add('hiding');
+  setTimeout(function(){el.style.display='none';el.classList.remove('hiding');},260);
+  try{localStorage.setItem(WN_VERSION_N,'1');}catch(e){}
+}
 </script>
 
 <!-- Barcode Scanner Modal -->
@@ -1356,6 +1395,47 @@ async function sendNutCoachMsg(){
       <div style="width:260px;height:160px;border:3px solid rgba(255,255,255,0.8);border-radius:12px;box-shadow:0 0 0 2000px rgba(0,0,0,0.45);"></div>
     </div>
     <div id="scanner-status" style="position:absolute;bottom:40px;left:0;right:0;text-align:center;color:#fff;font-size:14px;text-shadow:0 1px 3px rgba(0,0,0,0.8);">Point camera at barcode</div>
+  </div>
+</div>
+
+<div id="wn-overlay" style="display:none">
+  <div id="wn-sheet">
+    <div class="wn-top">
+      <div class="wn-icon">🌿</div>
+      <div>
+        <div class="wn-eyebrow">What's New</div>
+        <div class="wn-title">New in Nutrition Tracker</div>
+      </div>
+    </div>
+    <div class="wn-items">
+      <div class="wn-item">
+        <div class="wn-item-icon">🤖</div>
+        <div class="wn-item-body">
+          <div class="wn-item-name">AI Nutrition Coach</div>
+          <div class="wn-where">Coach tab</div>
+          <div class="wn-item-desc">Ask about macros, meal timing, supplements, and get a personalized nutrition plan built around your goals.</div>
+        </div>
+      </div>
+      <div class="wn-item">
+        <div class="wn-item-icon">📷</div>
+        <div class="wn-item-body">
+          <div class="wn-item-name">Barcode Scanner</div>
+          <div class="wn-where">Search → scan icon</div>
+          <div class="wn-item-desc">Instantly look up any packaged food — just tap the scan icon in the Search tab and point your camera at the barcode.</div>
+        </div>
+      </div>
+      <div class="wn-item">
+        <div class="wn-item-icon">⭐</div>
+        <div class="wn-item-body">
+          <div class="wn-item-name">Favorites</div>
+          <div class="wn-where">Search → ⭐ on any food</div>
+          <div class="wn-item-desc">Save foods you eat often for lightning-fast logging. Tap the star next to any search result to add it to your favorites list.</div>
+        </div>
+      </div>
+    </div>
+    <div class="wn-footer">
+      <button class="wn-dismiss" onclick="closeWhatsNew()">Got It</button>
+    </div>
   </div>
 </div>
 </body>
