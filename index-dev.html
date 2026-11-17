@@ -539,9 +539,14 @@ function getTodayLoad(){
     if(mw&&mw.date===todayStr()){
       const miles=mw.miles||0,type=mw.type||'';
       if(type==='rest')return'rest';
-      if(type==='recovery'||miles<=3)return'easy';
-      if(type==='long'||miles>=10)return'long';
+      if(type==='long')return'long';
+      if(type==='tempo'||type==='intervals'||type==='hills'||type==='speedplay')return'hard';
+      if(type==='recovery')return'easy';
+      if(type==='foundation'||type==='easy'||type==='strides'||type==='cruise')return'easy';
+      // fallback: use miles
+      if(miles>=10)return'long';
       if(miles>=6)return'hard';
+      if(miles<=3&&miles>0)return'easy';
       return'easy';
     }
   }catch(e){}
