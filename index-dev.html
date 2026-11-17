@@ -1210,7 +1210,7 @@ function renderCoachTabNut(){
   const calRemain=calTarget-calLogged;
   const workoutInfo=(()=>{try{const w=JSON.parse(localStorage.getItem('nt_marathon_today')||'null');return w?`${w.type.charAt(0).toUpperCase()+w.type.slice(1)} · ${w.miles||0} mi`:null;}catch(e){return null;}})();
   const firstName=(profile?.name||'there').split(' ')[0];
-  const chipHtml=chips.map(s=>'<button class="cchip" onclick="nutCoachChip(this,'+JSON.stringify(s)+')">'+s+'</button>').join('');
+  const chipHtml=chips.map(s=>'<button class="cchip" data-chip-text="'+s.replace(/"/g,'&quot;')+'">'+s+'</button>').join('');
   // Restore session (persists across tab switches; clears on app reopen)
   let savedHistory=[];let chipsHidden=false;
   try{
@@ -1247,6 +1247,14 @@ function renderCoachTabNut(){
     '</button></div>',
   ].join('');
   document.getElementById('nut-coach-input').addEventListener('keydown',function(e){if(e.key==='Enter')sendNutCoachMsg();});
+  document.getElementById('nut-coach-chips').addEventListener('click',function(e){
+    var btn=e.target.closest('[data-chip-text]');
+    if(!btn)return;
+    document.getElementById('nut-coach-chips').style.display='none';
+    nutCoachSave(true);
+    document.getElementById('nut-coach-input').value=btn.getAttribute('data-chip-text');
+    sendNutCoachMsg();
+  });
   nutCoachHistory=savedHistory;
   if(savedHistory.length){const msgs=document.getElementById('nut-coach-msgs');msgs.scrollTop=msgs.scrollHeight;}
 }
