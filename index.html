@@ -1063,11 +1063,19 @@ function buildAIPrompt(){
   const timeOfDay=hour<10?'morning':hour<14?'midday':hour<18?'afternoon':'evening';
   let marathonCtx='';
   try{const mw=JSON.parse(localStorage.getItem('nt_marathon_today')||'null');if(mw&&mw.date===todayStr()){marathonCtx=`Today's planned workout: ${mw.miles||0} miles, type: ${mw.type||'unknown'}.`;}}catch(e){}
+  let prevAdvice='';
+  try{
+    const saved=JSON.parse(localStorage.getItem('nut_coach_state')||'null');
+    if(saved&&saved.date===todayStr()&&saved.history&&saved.history.length){
+      const last=saved.history.filter(m=>m.role==='assistant').slice(-1)[0];
+      if(last) prevAdvice=`Earlier today the coach advised: "${last.content.substring(0,150)}". Stay consistent with this advice.`;
+    }
+  }catch(e){}
   const carbPct=targets.carbs>0?Math.round(totals.carbs/targets.carbs*100):0;
   const protPct=targets.protein>0?Math.round(totals.protein/targets.protein*100):0;
   const fatPct=targets.fat>0?Math.round(totals.fat/targets.fat*100):0;
   const kcalPct=targets.kcal>0?Math.round(totals.kcal/targets.kcal*100):0;
-  return `You are a sports nutrition coach for a marathon runner. It is ${timeOfDay} on a ${loadLabel}. ${marathonCtx}
+  return `You are a sports nutrition coach for a marathon runner. It is ${timeOfDay} on a ${loadLabel}. ${marathonCtx} ${prevAdvice}
 Current nutrition logged today:
 - Calories: ${totals.kcal} of ${targets.kcal} kcal (${kcalPct}%)
 - Carbs: ${totals.carbs}g of ${targets.carbs}g (${carbPct}%)
@@ -1224,14 +1232,26 @@ function buildNutCoachContext(){
     fat:Math.max(0,targets.fat-totals.fat)
   };
   const meals=foodLog.map(e=>`${e.meal}: ${e.name} (${Math.round((e.kcalPer||0)*(e.servingQty||1))} kcal)`).join(', ')||'Nothing logged yet';
+  // Include today's conversation history so all coach instances stay aligned
+  let convSummary='';
+  try{
+    const saved=JSON.parse(localStorage.getItem('nut_coach_state')||'null');
+    if(saved&&saved.date===todayStr()&&saved.history&&saved.history.length){
+      const msgs=saved.history.slice(-6);
+      const userMsgs=msgs.filter(m=>m.role==='user').map(m=>'"'+m.content.substring(0,80)+'"').join('; ');
+      const aiMsgs=msgs.filter(m=>m.role==='assistant').map(m=>m.content.substring(0,120)).join(' / ');
+      if(userMsgs) convSummary=`Earlier today user asked: ${userMsgs}. Coach advised: ${aiMsgs}`;
+    }
+  }catch(e){}
   return [
     `User: ${profile?.name||'Athlete'}, weight: ${profile?.weight||'?'}lbs, goal: ${profile?.goal||'performance'}`,
     `Training load today: ${getTodayLoad()}`,
     `Daily targets: ${targets.kcal} kcal, ${targets.protein}g protein, ${targets.carbs}g carbs, ${targets.fat}g fat`,
     `Already logged: ${totals.kcal} kcal, ${totals.protein}g protein, ${totals.carbs}g carbs, ${totals.fat}g fat`,
     `Remaining: ${remaining.kcal} kcal, ${remaining.protein}g protein, ${remaining.carbs}g carbs, ${remaining.fat}g fat`,
-    `Today's food log: ${meals}`
-  ].join('\n');
+    `Today's food log: ${meals}`,
+    convSummary
+  ].filter(Boolean).join('\n');
 }
 
 function renderCoachTabNut(){
