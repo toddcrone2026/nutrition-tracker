@@ -532,24 +532,31 @@ function calcTargets(p,load){
   const carbKcal=kcal-protKcal-fatKcal;
   return{kcal,carbs:Math.round(carbKcal/4),protein:Math.round(protKcal/4),fat:Math.round(fatKcal/9)};
 }
+function mapWorkoutType(type,miles){
+  if(type==='rest')return'rest';
+  if(type==='long')return'long';
+  if(type==='tempo'||type==='intervals'||type==='hills'||type==='speedplay')return'hard';
+  if(type==='recovery'||type==='foundation'||type==='easy'||type==='strides'||type==='cruise')return'easy';
+  if((miles||0)>=10)return'long';
+  if((miles||0)>=6)return'hard';
+  return'easy';
+}
 function getTodayLoad(){
-  // Read today's workout from marathon app if available
+  // 1. Try localStorage (same-device same-browser fast path)
   try{
     const mw=JSON.parse(localStorage.getItem('nt_marathon_today')||'null');
-    if(mw&&mw.date===todayStr()){
-      const miles=mw.miles||0,type=mw.type||'';
-      if(type==='rest')return'rest';
-      if(type==='long')return'long';
-      if(type==='tempo'||type==='intervals'||type==='hills'||type==='speedplay')return'hard';
-      if(type==='recovery')return'easy';
-      if(type==='foundation'||type==='easy'||type==='strides'||type==='cruise')return'easy';
-      // fallback: use miles
-      if(miles>=10)return'long';
-      if(miles>=6)return'hard';
-      if(miles<=3&&miles>0)return'easy';
-      return'easy';
-    }
+    if(mw&&mw.date===todayStr())return mapWorkoutType(mw.type,mw.miles);
   }catch(e){}
+  // 2. Try Firestore (cross-device — async, updates UI when ready)
+  if(userId){
+    db.collection('workout_today').doc(userId+'_'+todayStr()).get().then(snap=>{
+      if(snap.exists){
+        const d=snap.data();
+        try{localStorage.setItem('nt_marathon_today',JSON.stringify({date:d.date,type:d.type,miles:d.miles||0}));}catch(e){}
+        renderMacroBar();
+      }
+    }).catch(()=>{});
+  }
   return profile?.trainingLoad||'easy';
 }
 function calcTotals(entries){return entries.reduce((acc,e)=>{const s=e.servingQty||1;acc.kcal+=Math.round((e.kcalPer||0)*s);acc.carbs+=Math.round((e.carbsPer||0)*s);acc.protein+=Math.round((e.proteinPer||0)*s);acc.fat+=Math.round((e.fatPer||0)*s);return acc},{kcal:0,carbs:0,protein:0,fat:0})}
