@@ -1122,7 +1122,7 @@ async function openAICoach(){
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:200,messages:[{role:'user',content:buildAIPrompt()}]})
+      body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:200,messages:[{role:'user',content:buildAIPrompt()}]})
     });
     if(res.ok){
       const data=await res.json();
@@ -1349,7 +1349,7 @@ function nutIsLogRequest(t){return /\b(log|add|record|track|save)\b/i.test(t)&&!
 async function nutCoachExtractLog(key){
   const sys=`Today's date: ${todayStr()}. The user just asked to log food. Using the conversation, output ONLY <log> tags (one per food the user asked to log), nothing else. Format: <log>{"name":"Short food name","serving":"2 slices","meal":"Breakfast|Lunch|Dinner|Snacks or null","kcal":0,"carbs":0,"protein":0,"fat":0}</log>. Use numbers already given in the conversation for that food when available; otherwise your best estimate. Whole-number totals for the full amount.`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:400,system:sys,messages:nutCoachHistory})});
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:400,system:sys,messages:nutCoachHistory})});
     const d=await res.json();return parseNutLogTags(d.content?.[0]?.text||'').items;
   }catch(e){return[]}
 }
@@ -1393,7 +1393,7 @@ async function sendNutCoachMsg(){
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:600,system:sys,messages:nutCoachHistory})
+      body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:600,system:sys,messages:nutCoachHistory})
     });
     const data=await res.json();
     const raw=data.content?.[0]?.text||'Sorry, try again!';
