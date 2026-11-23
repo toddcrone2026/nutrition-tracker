@@ -1243,15 +1243,16 @@ function buildNutCoachContext(){
     carbs:Math.max(0,targets.carbs-totals.carbs),
     fat:Math.max(0,targets.fat-totals.fat)
   };
-  const meals=foodLog.map(e=>`${e.meal}: ${e.name} (${Math.round((e.kcalPer||0)*(e.servingQty||1))} kcal)`).join(', ')||'Nothing logged yet';
+  const recentLog=foodLog.slice(-8);  // cap to last 8 items to limit tokens
+  const meals=recentLog.map(e=>`${e.meal}: ${String(e.name).slice(0,25)} (${Math.round((e.kcalPer||0)*(e.servingQty||1))}kcal)`).join(', ')||'Nothing logged yet';
   // Include today's conversation history so all coach instances stay aligned
   let convSummary='';
   try{
     const saved=JSON.parse(localStorage.getItem('nut_coach_state')||'null');
     if(saved&&saved.date===todayStr()&&saved.history&&saved.history.length){
       const msgs=saved.history.slice(-6);
-      const userMsgs=msgs.filter(m=>m.role==='user').map(m=>'"'+m.content.substring(0,80)+'"').join('; ');
-      const aiMsgs=msgs.filter(m=>m.role==='assistant').map(m=>m.content.substring(0,120)).join(' / ');
+      const userMsgs=msgs.filter(m=>m.role==='user').map(m=>'"'+m.content.substring(0,50)+'"').join('; ');
+      const aiMsgs=msgs.filter(m=>m.role==='assistant').map(m=>m.content.substring(0,80)).join(' / ');
       if(userMsgs) convSummary=`Earlier today user asked: ${userMsgs}. Coach advised: ${aiMsgs}`;
     }
   }catch(e){}
@@ -1349,7 +1350,7 @@ function nutIsLogRequest(t){return /\b(log|add|record|track|save)\b/i.test(t)&&!
 async function nutCoachExtractLog(key){
   const sys=`Today's date: ${todayStr()}. The user just asked to log food. Using the conversation, output ONLY <log> tags (one per food the user asked to log), nothing else. Format: <log>{"name":"Short food name","serving":"2 slices","meal":"Breakfast|Lunch|Dinner|Snacks or null","kcal":0,"carbs":0,"protein":0,"fat":0}</log>. Use numbers already given in the conversation for that food when available; otherwise your best estimate. Whole-number totals for the full amount.`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:400,system:sys,messages:nutCoachHistory})});
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:200,system:sys,messages:nutCoachHistory.slice(-10)})});
     const d=await res.json();return parseNutLogTags(d.content?.[0]?.text||'').items;
   }catch(e){return[]}
 }
@@ -1393,7 +1394,7 @@ async function sendNutCoachMsg(){
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:600,system:sys,messages:nutCoachHistory})
+      body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:350,system:sys,messages:nutCoachHistory.slice(-10)})
     });
     const data=await res.json();
     if(!res.ok||data.error){
