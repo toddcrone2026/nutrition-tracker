@@ -1396,6 +1396,11 @@ async function sendNutCoachMsg(){
       body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:600,system:sys,messages:nutCoachHistory})
     });
     const data=await res.json();
+    if(!res.ok||data.error){
+      const msg=data.error?.message||('API error '+res.status);
+      document.getElementById('nut-thinking').outerHTML=`<div class="cmsg ai" style="color:var(--danger)">Coach error: ${msg}</div>`;
+      nutCoachSave();document.getElementById('nut-csend').disabled=false;return;
+    }
     const raw=data.content?.[0]?.text||'Sorry, try again!';
     let {text:reply,items}=parseNutLogTags(raw);
     if(!items.length&&nutIsLogRequest(text))items=await nutCoachExtractLog(key);
