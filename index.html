@@ -455,8 +455,39 @@ const COMMON_FOODS=[
 // Favorites stored in Firestore
 let favoritesCache=[];
 let favoritesLoaded=false;
+let savedMealsCache=[];
+let mealBuilderIngredients=[]; // temp list while building a new meal
 function getFavorites(){return favoritesCache;}
 function isFavorite(name){return favoritesCache.some(f=>f.name===name);}
+
+// ── Saved Meals ──────────────────────────────────────────────────────────────
+function getSavedMeals(){return savedMealsCache;}
+function loadSavedMeals(){
+  try{const bak=localStorage.getItem('nt_saved_meals_bak');if(bak)savedMealsCache=JSON.parse(bak);}catch(e){}
+  if(!userId)return;
+  db.collection('nt_saved_meals').doc(userId).get().then(snap=>{
+    const data=snap.data();
+    if(data&&data.items){savedMealsCache=data.items;try{localStorage.setItem('nt_saved_meals_bak',JSON.stringify(data.items));}catch(e){}}
+  }).catch(()=>{});
+}
+function saveSavedMeals(meals){
+  savedMealsCache=meals;
+  try{localStorage.setItem('nt_saved_meals_bak',JSON.stringify(meals));}catch(e){}
+  if(userId)db.collection('nt_saved_meals').doc(userId).set({items:meals}).catch(()=>{});
+}
+function deleteSavedMeal(idx){
+  const meals=getSavedMeals();meals.splice(idx,1);saveSavedMeals(meals);
+  renderSearchTab();showToast('Meal deleted');
+}
+function logSavedMeal(idx){
+  const meal=getSavedMeals()[idx];if(!meal)return;
+  const target=pendingMeal||'Dinner';
+  meal.ingredients.forEach(ing=>{
+    foodLog.push({name:ing.name,meal:target,servingQty:1,servingUnit:'1 serving',kcalPer:ing.kcal,carbsPer:ing.carbs,proteinPer:ing.protein,fatPer:ing.fat});
+  });
+  saveFoodLog();switchTab('log');renderLogTab();renderMacroBar();
+  showToast('✅ Logged '+meal.name+' ('+meal.ingredients.length+' items)');
+}
 function loadFavorites(){
   // Seed from localStorage backup immediately so search tab shows favorites right away
   try{const bak=localStorage.getItem('nt_favorites_bak');if(bak){favoritesCache=JSON.parse(bak);favoritesLoaded=true;}}catch(e){}
@@ -643,7 +674,7 @@ window.addEventListener('load',()=>{
 });
 function updateHeaderDate(){document.getElementById('header-date').textContent=fmtDate(selectedDate)}
 function initApp(){
-  renderMacroBar();loadFoodLog(selectedDate);loadFavorites();switchTab('log');setTimeout(showWhatsNew,600);
+  renderMacroBar();loadFoodLog(selectedDate);loadFavorites();loadSavedMeals();switchTab('log');setTimeout(showWhatsNew,600);
   db.collection('nutrition_users').doc(userId).get().then(snap=>{
     if(snap.exists){const data=snap.data();['sex','age','heightIn','weightLbs','goal','trainingLoad','goalWeightLbs','performanceGoal'].forEach(f=>{if(data[f]!=null)profile[f]=data[f]});try{localStorage.setItem('nutrition_profile',JSON.stringify(profile))}catch(e){}renderMacroBar()}
   }).catch(()=>{});
@@ -806,7 +837,7 @@ function saveEditedEntry(){
 function renderSearchTab(){
   const c=document.getElementById('tab-content');
   const favs=getFavorites();
-  c.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div class="section-title" style="margin:0">Search Foods</div><button onclick="openCustomFoodSheet()" style="background:var(--surface2);border:none;border-radius:20px;padding:6px 13px;font-family:inherit;font-size:12px;font-weight:700;color:var(--text1);cursor:pointer">+ Custom</button></div><div class="scan-banner" onclick="openScanner()"><div class="scan-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2d9e6b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="17" y="2" width="5" height="5" rx="1"/><rect x="2" y="17" width="5" height="5" rx="1"/><line x1="8" y1="4" x2="10" y2="4"/><line x1="12" y1="2" x2="12" y2="7"/><line x1="14" y1="4" x2="16" y2="4"/><line x1="8" y1="20" x2="10" y2="20"/><line x1="12" y1="17" x2="12" y2="22"/><line x1="14" y1="20" x2="16" y2="20"/><line x1="17" y1="12" x2="22" y2="12"/><line x1="12" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="2" y2="12"/></svg></div><span class="scan-label">Barcode Scanner</span><span class="scan-chevron">›</span><div class="scan-line"></div></div><div class="scan-banner" onclick="document.getElementById(\'label-photo-input\').click()" style="margin-top:-4px;background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.35);box-shadow:0 0 18px rgba(99,102,241,0.08);"><div class="scan-icon-wrap" style="background:rgba(99,102,241,0.13);border-color:rgba(99,102,241,0.22);">📷</div><span class="scan-label" style="color:var(--text1)">Scan Nutrition Label</span><span class="scan-chevron" style="color:#6366f1">›</span></div><input type="file" id="label-photo-input" accept="image/*" capture="environment" style="display:none" onchange="analyzeLabelPhoto(event)" /><div id="label-analyzing" style="display:none;text-align:center;padding:10px;font-size:13px;color:var(--text2);">🤖 Reading nutrition label…</div><div class="scan-divider"><span>or search by name</span></div><div class="search-box"><input id="food-search-input" placeholder="e.g. chicken, tempeh, banana…" oninput="onSearchInput()" autocomplete="off" autocorrect="off" spellcheck="false"><span class="s-icon">🔍</span></div><div class="meal-switch">${MEAL_TYPES.map(m=>`<button class="meal-tab ${m===pendingMeal?'active':''}" onclick="setPendingMeal('${m}',this)">${MEAL_ICONS[m]} ${m}</button>`).join('')}</div><div id="search-results-wrap">${favs.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:8px">⭐ Favorites</div>${renderFavoriteCards(favs)}<div style="height:4px"></div>`:''}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:8px">Common Foods</div>${renderCommonFoodCards(COMMON_FOODS.slice(0,12))}</div>`;
+  c.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div class="section-title" style="margin:0">Search Foods</div><div style="display:flex;gap:8px"><button onclick="openCustomFoodSheet()" style="background:var(--surface2);border:none;border-radius:20px;padding:6px 13px;font-family:inherit;font-size:12px;font-weight:700;color:var(--text1);cursor:pointer">+ Custom</button><button onclick="openMealBuilder()" style="background:rgba(255,107,53,0.12);border:1px solid rgba(255,107,53,0.3);border-radius:20px;padding:6px 13px;font-family:inherit;font-size:12px;font-weight:700;color:var(--primary);cursor:pointer">+ Meal</button></div></div><div class="scan-banner" onclick="openScanner()"><div class="scan-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2d9e6b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="17" y="2" width="5" height="5" rx="1"/><rect x="2" y="17" width="5" height="5" rx="1"/><line x1="8" y1="4" x2="10" y2="4"/><line x1="12" y1="2" x2="12" y2="7"/><line x1="14" y1="4" x2="16" y2="4"/><line x1="8" y1="20" x2="10" y2="20"/><line x1="12" y1="17" x2="12" y2="22"/><line x1="14" y1="20" x2="16" y2="20"/><line x1="17" y1="12" x2="22" y2="12"/><line x1="12" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="2" y2="12"/></svg></div><span class="scan-label">Barcode Scanner</span><span class="scan-chevron">›</span><div class="scan-line"></div></div><div class="scan-banner" onclick="document.getElementById(\'label-photo-input\').click()" style="margin-top:-4px;background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.35);box-shadow:0 0 18px rgba(99,102,241,0.08);"><div class="scan-icon-wrap" style="background:rgba(99,102,241,0.13);border-color:rgba(99,102,241,0.22);">📷</div><span class="scan-label" style="color:var(--text1)">Scan Nutrition Label</span><span class="scan-chevron" style="color:#6366f1">›</span></div><input type="file" id="label-photo-input" accept="image/*" capture="environment" style="display:none" onchange="analyzeLabelPhoto(event)" /><div id="label-analyzing" style="display:none;text-align:center;padding:10px;font-size:13px;color:var(--text2);">🤖 Reading nutrition label…</div><div class="scan-divider"><span>or search by name</span></div><div class="search-box"><input id="food-search-input" placeholder="e.g. chicken, tempeh, banana…" oninput="onSearchInput()" autocomplete="off" autocorrect="off" spellcheck="false"><span class="s-icon">🔍</span></div><div class="meal-switch">${MEAL_TYPES.map(m=>`<button class="meal-tab ${m===pendingMeal?'active':''}" onclick="setPendingMeal('${m}',this)">${MEAL_ICONS[m]} ${m}</button>`).join('')}</div><div id="search-results-wrap">${renderSavedMealsSection()}${favs.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:8px">⭐ Favorites</div>${renderFavoriteCards(favs)}<div style="height:4px"></div>`:''}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:8px">Common Foods</div>${renderCommonFoodCards(COMMON_FOODS.slice(0,12))}</div>`;
   setTimeout(()=>document.getElementById('food-search-input')?.focus(),150);
 }
 function setPendingMeal(meal,el){pendingMeal=meal;document.querySelectorAll('.meal-tab').forEach(b=>b.classList.remove('active'));el.classList.add('active')}
@@ -892,6 +923,104 @@ function toggleFavFromSheet(){
 }
 function addToLog(){const qty=parseFloat(document.getElementById('sh-qty')?.value)||1,unitEl=document.getElementById('sh-unit'),unit=unitEl?.value||'100g',grams=parseFloat(unitEl?.selectedOptions[0]?.dataset.grams||100),scale=(qty*grams)/100,meal=document.getElementById('sh-meal')?.value||pendingMeal;foodLog.push({name:pendingFood.name,meal,servingQty:1,servingUnit:`${qty} × ${unit}`,kcalPer:Math.round((pendingFood.kcalPer100||0)*scale),carbsPer:Math.round((pendingFood.carbsPer100||0)*scale),proteinPer:Math.round((pendingFood.proteinPer100||0)*scale),fatPer:Math.round((pendingFood.fatPer100||0)*scale)});saveFoodLog();closeAddSheet();pendingMeal=meal;switchTab('log');showToast('Added to '+meal)}
 function closeAddSheet(e){if(!e||e.target===document.getElementById('add-sheet-overlay'))document.getElementById('add-sheet-overlay').classList.remove('open')}
+
+// ── Meal Builder ─────────────────────────────────────────────────────────────
+function renderSavedMealsSection(){
+  const meals=getSavedMeals();
+  if(!meals.length)return '';
+  const cards=meals.map((m,i)=>{
+    const totalKcal=m.ingredients.reduce((s,x)=>s+(x.kcal||0),0);
+    const totalProt=m.ingredients.reduce((s,x)=>s+(x.protein||0),0);
+    return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:14px;margin-bottom:2px">${m.name}</div>
+        <div style="font-size:12px;color:var(--text2)">${totalKcal} kcal · ${Math.round(totalProt)}g protein · ${m.ingredients.length} items</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button onclick="logSavedMeal(${i})" style="background:var(--primary);border:none;border-radius:8px;padding:7px 13px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">Log</button>
+        <button onclick="deleteSavedMeal(${i})" style="background:rgba(229,57,53,0.1);border:1px solid rgba(229,57,53,0.3);border-radius:8px;padding:7px 10px;font-size:13px;color:#e53935;cursor:pointer">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:8px">🍽 Saved Meals</div>${cards}<div style="height:4px"></div>`;
+}
+
+function renderMealBuilderIngredients(){
+  const el=document.getElementById('mb-ingredients');if(!el)return;
+  if(!mealBuilderIngredients.length){el.innerHTML='<div style="font-size:13px;color:var(--text2);text-align:center;padding:12px 0">No ingredients yet — tap + Add Ingredient</div>';return;}
+  el.innerHTML=mealBuilderIngredients.map((ing,i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:14px;font-weight:600">${ing.name}</div>
+        <div style="font-size:12px;color:var(--text2)">${ing.kcal} kcal · C${ing.carbs}g · P${ing.protein}g · F${ing.fat}g</div>
+      </div>
+      <button onclick="mealBuilderIngredients.splice(${i},1);renderMealBuilderIngredients()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;padding:4px 8px">✕</button>
+    </div>`).join('');
+  // Update totals
+  const totKcal=mealBuilderIngredients.reduce((s,x)=>s+(x.kcal||0),0);
+  const totCarbs=mealBuilderIngredients.reduce((s,x)=>s+(x.carbs||0),0);
+  const totProt=mealBuilderIngredients.reduce((s,x)=>s+(x.protein||0),0);
+  const totFat=mealBuilderIngredients.reduce((s,x)=>s+(x.fat||0),0);
+  const totEl=document.getElementById('mb-totals');
+  if(totEl)totEl.innerHTML=`<b>${totKcal}</b> kcal · C<b>${totCarbs}</b>g · P<b>${totProt}</b>g · F<b>${totFat}</b>g`;
+}
+
+function openMealBuilder(){
+  mealBuilderIngredients=[];
+  document.getElementById('add-sheet-body').innerHTML=`<div class="sheet-handle"></div>
+    <div class="sheet-title">Build a Meal</div>
+    <div class="form-group"><label class="form-label">Meal Name</label><input class="form-input" id="mb-name" placeholder="e.g. Post-run smoothie, Chicken bowl…" autocorrect="off"></div>
+    <div id="mb-ingredients" style="margin-bottom:12px"><div style="font-size:13px;color:var(--text2);text-align:center;padding:12px 0">No ingredients yet — tap + Add Ingredient</div></div>
+    <div id="mb-totals" style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:12px"></div>
+    <button onclick="openMealIngredientAdder()" style="width:100%;padding:11px;background:var(--surface2);border:1px dashed var(--border);border-radius:10px;font-size:14px;font-weight:600;color:var(--primary);cursor:pointer;margin-bottom:10px">+ Add Ingredient</button>
+    <button onclick="saveMealFromBuilder()" class="btn btn-primary" style="width:100%">Save Meal</button>`;
+  document.getElementById('add-sheet-overlay').classList.add('open');
+}
+
+function openMealIngredientAdder(){
+  // Show a quick inline form to add one ingredient by name + macros
+  document.getElementById('add-sheet-body').innerHTML=`<div class="sheet-handle"></div>
+    <div class="sheet-title">Add Ingredient</div>
+    <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="mi-name" placeholder="e.g. Oats, Chicken breast…" autocorrect="off"></div>
+    <div class="form-row">
+      <div class="form-group" style="margin:0"><label class="form-label">Calories</label><input class="form-input" id="mi-kcal" type="number" placeholder="0" inputmode="decimal"></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Carbs (g)</label><input class="form-input" id="mi-carbs" type="number" placeholder="0" inputmode="decimal"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="margin:0"><label class="form-label">Protein (g)</label><input class="form-input" id="mi-prot" type="number" placeholder="0" inputmode="decimal"></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Fat (g)</label><input class="form-input" id="mi-fat" type="number" placeholder="0" inputmode="decimal"></div>
+    </div>
+    <button onclick="addIngredientToMeal()" class="btn btn-primary" style="width:100%;margin-top:4px">Add</button>
+    <button onclick="openMealBuilder()" class="btn btn-secondary" style="width:100%;margin-top:8px">← Back</button>`;
+}
+
+function addIngredientToMeal(){
+  const name=(document.getElementById('mi-name')?.value||'').trim();
+  if(!name){showToast('Enter ingredient name');return;}
+  const kcal=Math.round(parseFloat(document.getElementById('mi-kcal')?.value)||0);
+  const carbs=Math.round(parseFloat(document.getElementById('mi-carbs')?.value)||0);
+  const protein=Math.round(parseFloat(document.getElementById('mi-prot')?.value)||0);
+  const fat=Math.round(parseFloat(document.getElementById('mi-fat')?.value)||0);
+  mealBuilderIngredients.push({name,kcal,carbs,protein,fat});
+  // Go back to builder and refresh list
+  openMealBuilder();
+  // restore name field if they had it
+  setTimeout(()=>renderMealBuilderIngredients(),10);
+}
+
+function saveMealFromBuilder(){
+  const name=(document.getElementById('mb-name')?.value||'').trim();
+  if(!name){showToast('Give your meal a name');return;}
+  if(!mealBuilderIngredients.length){showToast('Add at least one ingredient');return;}
+  const meals=getSavedMeals();
+  meals.unshift({name,ingredients:[...mealBuilderIngredients],createdAt:Date.now()});
+  saveSavedMeals(meals);
+  mealBuilderIngredients=[];
+  document.getElementById('add-sheet-overlay').classList.remove('open');
+  renderSearchTab();
+  showToast('Meal saved: '+name+' ✅');
+}
+
 function openCustomFoodSheet(){
   document.getElementById('add-sheet-body').innerHTML=`<div class="sheet-handle"></div><div class="sheet-title">Custom Food</div><div class="sheet-sub">Enter nutrition per serving</div><div class="form-group"><label class="form-label">Food Name</label><input class="form-input" id="cf-name" placeholder="e.g. Mom's Lasagna" autocorrect="off"></div><div class="form-row"><div class="form-group" style="margin:0"><label class="form-label">Calories</label><input class="form-input" id="cf-kcal" type="number" placeholder="0" inputmode="decimal"></div><div class="form-group" style="margin:0"><label class="form-label">Serving size</label><input class="form-input" id="cf-srv" placeholder="e.g. 1 cup"></div></div><div class="form-row"><div class="form-group" style="margin:0"><label class="form-label">Carbs (g)</label><input class="form-input" id="cf-carbs" type="number" placeholder="0" inputmode="decimal"></div><div class="form-group" style="margin:0"><label class="form-label">Protein (g)</label><input class="form-input" id="cf-prot" type="number" placeholder="0" inputmode="decimal"></div></div><div class="form-row"><div class="form-group" style="margin:0"><label class="form-label">Fat (g)</label><input class="form-input" id="cf-fat" type="number" placeholder="0" inputmode="decimal"></div><div class="form-group" style="margin:0"><label class="form-label">Fiber (g)</label><input class="form-input" id="cf-fiber" type="number" placeholder="0" inputmode="decimal"></div></div><div class="form-group"><label class="form-label">Meal</label><select class="form-input" id="cf-meal">${MEAL_TYPES.map(m=>`<option value="${m}" ${m===pendingMeal?'selected':''}>${m}</option>`).join('')}</select></div><div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input type="checkbox" id="cf-fav" style="width:18px;height:18px;accent-color:var(--primary)"><label for="cf-fav" style="font-size:14px;font-weight:600;cursor:pointer">Save as favorite ⭐</label></div><button class="btn btn-primary" onclick="addCustomToLog()">Add to Log</button>`;
   document.getElementById('add-sheet-overlay').classList.add('open');
