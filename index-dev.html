@@ -965,16 +965,18 @@ function renderMealBuilderIngredients(){
   if(totEl)totEl.innerHTML=`<b>${totKcal}</b> kcal · C<b>${totCarbs}</b>g · P<b>${totProt}</b>g · F<b>${totFat}</b>g`;
 }
 
-function openMealBuilder(){
-  mealBuilderIngredients=[];
+function openMealBuilder(keepState){
+  if(!keepState) mealBuilderIngredients=[];
+  const savedName = keepState ? (document.getElementById('mb-name')?.value || '') : '';
   document.getElementById('add-sheet-body').innerHTML=`<div class="sheet-handle"></div>
     <div class="sheet-title">Build a Meal</div>
-    <div class="form-group"><label class="form-label">Meal Name</label><input class="form-input" id="mb-name" placeholder="e.g. Post-run smoothie, Chicken bowl…" autocorrect="off"></div>
+    <div class="form-group"><label class="form-label">Meal Name</label><input class="form-input" id="mb-name" placeholder="e.g. Post-run smoothie, Chicken bowl…" autocorrect="off" value="${savedName}"></div>
     <div id="mb-ingredients" style="margin-bottom:12px"><div style="font-size:13px;color:var(--text2);text-align:center;padding:12px 0">No ingredients yet — tap + Add Ingredient</div></div>
     <div id="mb-totals" style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:12px"></div>
     <button onclick="openMealIngredientAdder()" style="width:100%;padding:11px;background:var(--surface2);border:1px dashed var(--border);border-radius:10px;font-size:14px;font-weight:600;color:var(--primary);cursor:pointer;margin-bottom:10px">+ Add Ingredient</button>
     <button onclick="saveMealFromBuilder()" class="btn btn-primary" style="width:100%">Save Meal</button>`;
   document.getElementById('add-sheet-overlay').classList.add('open');
+  renderMealBuilderIngredients();
 }
 
 function openMealIngredientAdder(){
@@ -1002,10 +1004,8 @@ function addIngredientToMeal(){
   const protein=Math.round(parseFloat(document.getElementById('mi-prot')?.value)||0);
   const fat=Math.round(parseFloat(document.getElementById('mi-fat')?.value)||0);
   mealBuilderIngredients.push({name,kcal,carbs,protein,fat});
-  // Go back to builder and refresh list
-  openMealBuilder();
-  // restore name field if they had it
-  setTimeout(()=>renderMealBuilderIngredients(),10);
+  // Go back to builder preserving state
+  openMealBuilder(true);
 }
 
 function saveMealFromBuilder(){
@@ -1018,7 +1018,7 @@ function saveMealFromBuilder(){
   mealBuilderIngredients=[];
   document.getElementById('add-sheet-overlay').classList.remove('open');
   renderSearchTab();
-  showToast('Meal saved: '+name+' ✅');
+  showToast('✅ '+name+' saved — tap Log anytime from Search tab');
 }
 
 function openCustomFoodSheet(){
